@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>香港地推路名地圖 - 團隊管理版</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
 <style>
 /* 滿版核心設定 */
 html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; }
@@ -19,7 +20,7 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 .map-wrap { position: relative; flex-grow: 1; width: 100%; background: #0d1117; z-index: 1; display: flex; flex-direction: column; }
 #map { flex-grow: 1; width: 100%; z-index: 1; }
 
-/* 新增：搜尋列樣式 */
+/* 搜尋列樣式 */
 .search-box {
   position: absolute; top: 16px; right: 16px; z-index: 1000;
   display: flex; gap: 6px;
@@ -90,7 +91,7 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
   <div class="map-wrap">
     
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="搜尋香港地址/街道..." onkeypress="if(event.key==='Enter') searchAddress();" />
+      <input type="text" id="search-input" placeholder="支援簡繁體搜尋 (如: 弥敦道)" onkeypress="if(event.key==='Enter') searchAddress();" />
       <button onclick="searchAddress()">搜尋</button>
     </div>
 
@@ -151,20 +152,18 @@ const db = getDatabase(app);
 let curActive = null;
 window.zones = {};
 
-// ==========================================
-// 核心升級：限制地圖只能在香港範圍內滑動
-// ==========================================
+// 香港邊界限制
 const hkBounds = L.latLngBounds(
-  L.latLng(22.13, 113.82), // 西南角邊界
-  L.latLng(22.58, 114.45)  // 東北角邊界
+  L.latLng(22.13, 113.82),
+  L.latLng(22.58, 114.45)
 );
 
 const map = L.map('map', { 
   zoomControl: false,
-  maxBounds: hkBounds,           // 鎖定邊界，拉不出去
-  maxBoundsViscosity: 1.0,       // 完全硬性邊界限制
-  minZoom: 10,                   // 限制最小縮放，避免地圖變太小
-  maxZoom: 18                    // 限制最大縮放
+  maxBounds: hkBounds,           
+  maxBoundsViscosity: 1.0,       
+  minZoom: 10,                   
+  maxZoom: 18                    
 }).setView([22.35, 114.18], 11);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -365,34 +364,37 @@ window.deleteRunner = function(idx) {
 };
 
 // ==========================================
-// 新增：地址搜尋功能 (限制在香港)
+// 地址搜尋功能 (支援簡繁轉換 + 限制在香港)
 // ==========================================
 let searchMarker = null;
 
+// 初始化 OpenCC 轉換器 (簡轉繁)
+const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'hk' }) : (text) => text;
+
 window.searchAddress = function() {
-  const query = document.getElementById("search-input").value;
+  let query = document.getElementById("search-input").value;
   if (!query.trim()) return;
 
-  // 使用開源 OpenStreetMap API 進行地理編碼，且限制為香港 (countrycodes=hk)
-  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=hk&limit=1`)
+  // 1. 將使用者輸入的文字(無論簡繁) 強制轉換為香港標準繁體
+  const hkQuery = converter(query);
+
+  // 2. 加入 countrycodes=hk 確保只在香港內搜尋
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(hkQuery)}&countrycodes=hk&limit=1&accept-language=zh-HK`)
     .then(res => res.json())
     .then(data => {
       if (data && data.length > 0) {
         const lat = data[0].lat;
         const lon = data[0].lon;
         
-        // 飛到搜尋的座標位置，並放大地圖
         map.flyTo([lat, lon], 16, { duration: 1.5 });
         
-        // 如果之前有標記，先移除
         if (searchMarker) map.removeLayer(searchMarker);
         
-        // 在搜尋位置加上標記
         searchMarker = L.marker([lat, lon]).addTo(map)
           .bindPopup(`<b>搜尋結果：</b><br>${data[0].display_name.split(',')[0]}`)
           .openPopup();
       } else {
-        alert("找不到該地址！\n(請嘗試使用街道名稱，例如：彌敦道、皇后大道中)");
+        alert(`找不到地址「${query}」！\n(請嘗試輸入具體街道名稱，例如：彌敦道)`);
       }
     })
     .catch(() => alert("搜尋服務暫時無法使用，請稍後再試。"));
