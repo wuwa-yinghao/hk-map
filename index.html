@@ -2,18 +2,20 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>香港地推分區地圖</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-serif; background: #0d1117; color: #e0e0e0; }
-.container { max-width: 900px; margin: 0 auto; background: #161b22; min-height: 100vh; }
+.container { max-width: 900px; margin: 0 auto; background: #161b22; min-height: 100vh; display: flex; flex-direction: column; }
 .title-bar { background: #0f2940; color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
 .title-bar h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
 .title-bar span { font-size: 13px; opacity: 0.6; }
-.map-wrap { position: relative; padding: 12px; }
-svg { width: 100%; height: auto; display: block; }
-.district { cursor: pointer; transition: filter 0.2s, stroke-width 0.2s, opacity 0.3s; stroke-width: 1.5; }
+/* 禁止文字反白，提升拖曳手感 */
+.map-wrap { position: relative; padding: 12px; flex-grow: 1; user-select: none; -webkit-user-select: none; touch-action: none; overflow: hidden; }
+svg { width: 100%; height: auto; display: block; cursor: grab; }
+svg:active { cursor: grabbing; }
+.district { cursor: pointer; transition: filter 0.2s, opacity 0.3s; stroke-width: 1.5; }
 .district:hover { filter: brightness(1.3); stroke-width: 2.5; }
 .district.active { stroke: #c8973e !important; stroke-width: 3; filter: brightness(1.2); }
 .district-label { pointer-events: none; font-size: 10.5px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
@@ -26,8 +28,8 @@ svg { width: 100%; height: auto; display: block; }
 }
 .info-panel.show { display: block; animation: slideUp 0.25s ease-out; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-.info-panel .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 20px; color: #555; line-height: 1; }
-.info-panel .close:hover { color: #aaa; }
+.info-panel .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 24px; color: #888; line-height: 1; padding: 4px;}
+.info-panel .close:hover { color: #fff; }
 .info-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .info-badge { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; flex-shrink: 0; }
 .info-title { font-size: 17px; font-weight: 600; color: #fff; }
@@ -43,20 +45,33 @@ svg { width: 100%; height: auto; display: block; }
 .legend-item span:first-child { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
 .toggle-row { display: flex; gap: 6px; padding: 10px 20px; border-bottom: 1px solid #1e2a3a; flex-wrap: wrap; align-items: center; }
 .toggle-label { font-size: 12px; color: #4a6070; margin-right: 4px; }
-.toggle-btn { font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 1px solid #2d3a4e; background: transparent; color: #556; cursor: pointer; transition: all 0.2s; }
+.toggle-btn { font-size: 11px; padding: 6px 10px; border-radius: 6px; border: 1px solid #2d3a4e; background: transparent; color: #556; cursor: pointer; transition: all 0.2s; }
 .toggle-btn:hover { border-color: #4a90d9; color: #4a90d9; }
 .toggle-btn.on { background: #1a4a2e; color: #2ecc71; border-color: #1a4a2e; }
-
-/* 修改按鈕樣式 */
-.edit-btn { margin-left: 8px; padding: 2px 8px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+.edit-btn { margin-left: 8px; padding: 4px 10px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
 .edit-btn:hover { background: #4a90d9; color: #fff; border-color: #4a90d9; }
+
+/* 📱 手機版專屬樣式 Media Queries */
+@media (max-width: 600px) {
+  .title-bar { padding: 12px 16px; }
+  .title-bar h1 { font-size: 16px; }
+  .toggle-btn { font-size: 12px; padding: 8px 12px; } /* 放大按鈕方便手指點擊 */
+  .edit-btn { padding: 6px 12px; font-size: 12px; }
+  .info-panel { 
+    bottom: 0; left: 0; right: 0; 
+    border-radius: 16px 16px 0 0; /* 讓面板像 App 一樣從底部滿版彈出 */
+    padding: 20px 20px 30px 20px; 
+    border-bottom: none; border-left: none; border-right: none;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
+  }
+}
 </style>
 </head>
 <body>
 <div class="container">
   <div class="title-bar">
     <h1>地推分區地圖</h1>
-    <span>點擊區域查看/收起詳情</span>
+    <span>可雙指縮放與拖曳</span>
   </div>
   <div class="toggle-row">
     <span class="toggle-label">人員狀態：</span>
@@ -100,9 +115,7 @@ svg { width: 100%; height: auto; display: block; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// ==========================================
-// 這裡已經換成你專屬的正確金鑰了，不用再改！
-// ==========================================
+// 這裡已經是你的正確金鑰
 const firebaseConfig = {
   apiKey: "AIzaSyChJSl71yDiQ1f24KAavDyw_1ViWe-Gc1M",
   authDomain: "hk-map-d0d52.firebaseapp.com",
@@ -116,7 +129,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 預設的初始數據 (如果資料庫是空的，會自動寫入這些)
 const defaultZones = {
   "Central and Western":{id:1,person:"人員1",area:"中西區",coverage:"中環、上環、西營盤、堅尼地城",density:"高",dt:"high",region:"港島",note:"金融商業核心",on:true},
   "Wan Chai":{id:2,person:"人員2",area:"灣仔區",coverage:"灣仔、銅鑼灣、天后、跑馬地",density:"高",dt:"high",region:"港島",note:"購物商業旺區",on:true},
@@ -138,31 +150,24 @@ const defaultZones = {
   "Islands":{id:15,person:"人員15",area:"北區+西貢+離島",coverage:"東涌、大嶼山",density:"低（合併）",dt:"low",region:"新界",note:"3區合併",on:true}
 };
 
-window.zones = defaultZones; // 設為全域變數
+window.zones = defaultZones; 
 let curActive = null;
 
-// 自動初始化數據
 const zonesRef = ref(db, 'zones');
 get(zonesRef).then((snapshot) => {
-  if (!snapshot.exists()) {
-    set(zonesRef, defaultZones);
-  }
+  if (!snapshot.exists()) set(zonesRef, defaultZones);
 });
 
-// 實時監聽 Firebase 數據變化
 onValue(zonesRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
     window.zones = data;
     refresh();
     buildToggles();
-    if (curActive && window.zones[curActive]) {
-      showPanel(window.zones[curActive]);
-    }
+    if (curActive && window.zones[curActive]) showPanel(window.zones[curActive]);
   }
 });
 
-// --- 地圖核心邏輯 ---
 const C_HIGH="#2471a3", C_MID="#1a6e3a", C_LOW="#1a6e3a", C_OFF="#2c2c2c", S_ON="#1e2a3a", S_OFF="#3a3a3a";
 function gc(z){ if(!z||!z.on) return C_OFF; return z.dt==="high"?C_HIGH:C_MID; }
 function getName(d){ return d.properties.name||d.properties.NAME_1||d.properties.NAME||d.id; }
@@ -172,23 +177,36 @@ function cx(d){const n=getName(d);return path.centroid(d)[0]+(lp[n]?lp[n][0]:0);
 function cy(d){const n=getName(d);return path.centroid(d)[1]+(lp[n]?lp[n][1]:0);}
 
 const svg=d3.select("#map");
+// 升級 1：建立一個專門用來裝載「可縮放內容」的群組 <g>
+const mapGroup = svg.append("g");
+
 const projection=d3.geoMercator().center([114.18,22.35]).scale(55000).translate([400,260]);
 const path=d3.geoPath().projection(projection);
 
 window.closePanel = function() {
   document.getElementById("panel").classList.remove("show");
-  svg.selectAll(".district").classed("active",false);
+  mapGroup.selectAll(".district").classed("active",false);
   curActive = null;
 };
 
-svg.append("rect").attr("width",800).attr("height",520).attr("fill","transparent")
+// 升級 2：加入 D3 的縮放與拖曳行為
+const zoom = d3.zoom()
+  .scaleExtent([1, 6]) // 限制縮放比例：最小 1 倍，最大 6 倍
+  .on("zoom", (event) => {
+    mapGroup.attr("transform", event.transform);
+  });
+svg.call(zoom);
+
+// 點擊地圖空白處關閉面板
+mapGroup.append("rect").attr("width",800).attr("height",520).attr("fill","transparent")
   .on("click",()=>{ window.closePanel(); });
 
 d3.json("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json").then(topo=>{
   const key=Object.keys(topo.objects)[0];
   const feats=topojson.feature(topo,topo.objects[key]).features;
 
-  svg.selectAll("path.district").data(feats).join("path")
+  // 注意這裡全數改成加入到 mapGroup，而不是 svg
+  mapGroup.selectAll("path.district").data(feats).join("path")
     .attr("class","district").attr("d",path)
     .each(function(d){applyStyle(d3.select(this),d);})
     .on("click",function(ev,d){
@@ -196,7 +214,7 @@ d3.json("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json"
       const n=getName(d);
       if(curActive===n){ window.closePanel(); }
       else {
-        svg.selectAll(".district").classed("active",false);
+        mapGroup.selectAll(".district").classed("active",false);
         d3.select(this).classed("active",true);
         curActive=n;
         const z=window.zones[n];
@@ -204,16 +222,16 @@ d3.json("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json"
       }
     });
 
-  svg.selectAll("text.district-label").data(feats).join("text")
+  mapGroup.selectAll("text.district-label").data(feats).join("text")
     .attr("class","district-label")
     .attr("x",d=>cx(d)).attr("y",d=>cy(d)-5)
     .text(d=>{const z=window.zones[getName(d)];return z?z.area.split("+")[0].split("—")[0].trim():getName(d);});
 
-  svg.selectAll("text.person-label").data(feats).join("text")
+  mapGroup.selectAll("text.person-label").data(feats).join("text")
     .attr("class","person-label")
     .attr("x",d=>cx(d)).attr("y",d=>cy(d)+8);
     
-  refresh(); // 初次渲染
+  refresh();
 }).catch(()=>{
   svg.append("text").attr("x",400).attr("y",260).attr("text-anchor","middle").attr("fill","#555").attr("font-size","14px").text("地圖數據加載失敗，請刷新重試");
 });
@@ -224,11 +242,11 @@ function applyStyle(sel,d){
 }
 
 function refresh(){
-  svg.selectAll("path.district").each(function(d){applyStyle(d3.select(this),d);});
-  svg.selectAll("text.district-label").each(function(d){
+  mapGroup.selectAll("path.district").each(function(d){applyStyle(d3.select(this),d);});
+  mapGroup.selectAll("text.district-label").each(function(d){
     const z=window.zones[getName(d)];d3.select(this).attr("fill",z&&z.on?"#fff":"rgba(255,255,255,0.25)");
   });
-  svg.selectAll("text.person-label").each(function(d){
+  mapGroup.selectAll("text.person-label").each(function(d){
     const z=window.zones[getName(d)];
     d3.select(this).text(z?(z.on?z.person:"暫停"):"").attr("fill",z&&z.on?"rgba(255,255,255,0.65)":"rgba(255,255,255,0.2)");
   });
@@ -248,31 +266,28 @@ window.showPanel = function(z){
   document.getElementById("p-note").textContent=z.note||"—";
 }
 
-// 動態建立切換按鈕，並綁定 Firebase 寫入
 function buildToggles(){
   const seen=new Set(),arr=[];
   Object.entries(window.zones).forEach(([n,z])=>{if(!seen.has(z.id)){seen.add(z.id);arr.push({n,z});}});
   arr.sort((a,b)=>a.z.id-b.z.id);
   const row=document.getElementById("toggleRow");
-  row.innerHTML = ""; // 清空重建
+  row.innerHTML = ""; 
   arr.forEach(({n,z})=>{
     const b=document.createElement("button");
     b.className="toggle-btn"+(z.on?" on":"");
     b.textContent=z.person;b.title=z.area;
     b.onclick=()=>{
       const ns = !z.on;
-      // 找出所有同 ID 的區域，一起同步到雲端
       const updates = {};
       Object.entries(window.zones).forEach(([key, zz])=>{
         if(zz.id === z.id) updates['/zones/' + key + '/on'] = ns;
       });
-      update(ref(db), updates).catch(err => console.error("更新失敗", err));
+      update(ref(db), updates).catch(err => console.error("更新狀態失敗", err));
     };
     row.appendChild(b);
   });
 }
 
-// 監聽修改負責人按鈕
 document.getElementById("edit-person-btn").onclick = () => {
   if (!curActive || !window.zones[curActive]) return; 
   
@@ -281,7 +296,6 @@ document.getElementById("edit-person-btn").onclick = () => {
 
   if (newPerson !== null && newPerson.trim() !== "") {
     const finalName = newPerson.trim();
-    // 找出所有同 ID 的區域，把它們的負責人名字一起更新，保證數據一致
     const updates = {};
     Object.entries(window.zones).forEach(([key, zz])=>{
       if(zz.id === currentZone.id) updates['/zones/' + key + '/person'] = finalName;
