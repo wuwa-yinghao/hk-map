@@ -5,65 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>香港地推分區地圖</title>
 <style>
+/* 滿版核心：讓 HTML 和 Body 佔滿 100% 高度且不產生外部捲軸 */
+html, body { height: 100%; width: 100%; overflow: hidden; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-serif; background: #0d1117; color: #e0e0e0; }
-.container { max-width: 900px; margin: 0 auto; background: #161b22; min-height: 100vh; display: flex; flex-direction: column; }
-.title-bar { background: #0f2940; color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
-.title-bar h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
-.title-bar span { font-size: 13px; opacity: 0.6; }
-/* 禁止文字反白，提升拖曳手感 */
-.map-wrap { position: relative; padding: 12px; flex-grow: 1; user-select: none; -webkit-user-select: none; touch-action: none; overflow: hidden; }
-svg { width: 100%; height: auto; display: block; cursor: grab; }
+
+/* 移除 max-width，讓容器寬度為 100% */
+.container { width: 100%; height: 100vh; background: #161b22; display: flex; flex-direction: column; }
+
+.title-bar { background: #0f2940; color: #fff; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.title-bar h1 { font-size: 18px; font-weight: 600; }
+.title-bar span { font-size: 12px; opacity: 0.6; }
+
+/* 地圖包圍層：佔滿剩餘高度 (flex-grow: 1) */
+.map-wrap { position: relative; flex-grow: 1; user-select: none; -webkit-user-select: none; touch-action: none; overflow: hidden; background: #0d1117; }
+svg { width: 100%; height: 100%; display: block; cursor: grab; }
 svg:active { cursor: grabbing; }
-.district { cursor: pointer; transition: filter 0.2s, opacity 0.3s; stroke-width: 1.5; }
+
+.district { cursor: pointer; transition: filter 0.2s; stroke-width: 1.5; }
 .district:hover { filter: brightness(1.3); stroke-width: 2.5; }
 .district.active { stroke: #c8973e !important; stroke-width: 3; filter: brightness(1.2); }
 .district-label { pointer-events: none; font-size: 10.5px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
 .person-label { pointer-events: none; font-size: 8.5px; font-weight: 500; text-anchor: middle; dominant-baseline: central; }
+
+/* 詳情面板：手機版底部滿版，電腦版則懸浮 */
 .info-panel {
   position: absolute; bottom: 16px; left: 16px; right: 16px;
-  background: #1c2333; border: 1px solid #2d3a4e; border-radius: 12px;
+  background: rgba(28, 35, 51, 0.95); border: 1px solid #2d3a4e; border-radius: 12px;
   padding: 16px 20px; display: none; z-index: 10;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
 }
 .info-panel.show { display: block; animation: slideUp 0.25s ease-out; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-.info-panel .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 24px; color: #888; line-height: 1; padding: 4px;}
-.info-panel .close:hover { color: #fff; }
+.info-panel .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 24px; color: #888; padding: 4px;}
+
 .info-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .info-badge { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; flex-shrink: 0; }
 .info-title { font-size: 17px; font-weight: 600; color: #fff; }
-.info-sub { font-size: 13px; color: #6a8099; margin-top: 2px; }
+.info-sub { font-size: 13px; color: #6a8099; }
 .info-details { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; align-items: center; }
-.info-details dt { color: #4a6070; margin-top: 4px; }
-.info-details dd { font-weight: 500; color: #b8c8d8; margin-top: 4px; }
-.status-tag { display: inline-block; font-size: 11px; padding: 2px 10px; border-radius: 4px; font-weight: 600; }
-.status-on { background: rgba(46,204,113,0.15); color: #2ecc71; }
-.status-off { background: rgba(149,165,166,0.15); color: #7f8c8d; }
-.legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 14px 20px; border-top: 1px solid #1e2a3a; }
-.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6a8099; }
-.legend-item span:first-child { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
-.toggle-row { display: flex; gap: 6px; padding: 10px 20px; border-bottom: 1px solid #1e2a3a; flex-wrap: wrap; align-items: center; }
-.toggle-label { font-size: 12px; color: #4a6070; margin-right: 4px; }
-.toggle-btn { font-size: 11px; padding: 6px 10px; border-radius: 6px; border: 1px solid #2d3a4e; background: transparent; color: #556; cursor: pointer; transition: all 0.2s; }
-.toggle-btn:hover { border-color: #4a90d9; color: #4a90d9; }
-.toggle-btn.on { background: #1a4a2e; color: #2ecc71; border-color: #1a4a2e; }
-.edit-btn { margin-left: 8px; padding: 4px 10px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
-.edit-btn:hover { background: #4a90d9; color: #fff; border-color: #4a90d9; }
+.info-details dt { color: #4a6070; }
+.info-details dd { font-weight: 500; color: #b8c8d8; }
 
-/* 📱 手機版專屬樣式 Media Queries */
+.legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 20px; border-top: 1px solid #1e2a3a; flex-shrink: 0; background: #161b22; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #6a8099; }
+.legend-item span:first-child { width: 12px; height: 12px; border-radius: 2px; }
+
+.toggle-row { display: flex; gap: 6px; padding: 10px 20px; border-bottom: 1px solid #1e2a3a; flex-wrap: wrap; align-items: center; flex-shrink: 0; background: #161b22; }
+.toggle-label { font-size: 12px; color: #4a6070; }
+.toggle-btn { font-size: 11px; padding: 6px 10px; border-radius: 6px; border: 1px solid #2d3a4e; background: transparent; color: #7f8c8d; cursor: pointer; }
+.toggle-btn.on { background: #1a4a2e; color: #2ecc71; border-color: #1a4a2e; }
+.edit-btn { margin-left: 8px; padding: 4px 10px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; }
+
 @media (max-width: 600px) {
-  .title-bar { padding: 12px 16px; }
-  .title-bar h1 { font-size: 16px; }
-  .toggle-btn { font-size: 12px; padding: 8px 12px; } /* 放大按鈕方便手指點擊 */
-  .edit-btn { padding: 6px 12px; font-size: 12px; }
-  .info-panel { 
-    bottom: 0; left: 0; right: 0; 
-    border-radius: 16px 16px 0 0; /* 讓面板像 App 一樣從底部滿版彈出 */
-    padding: 20px 20px 30px 20px; 
-    border-bottom: none; border-left: none; border-right: none;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
-  }
+  .info-panel { bottom: 0; left: 0; right: 0; border-radius: 16px 16px 0 0; padding: 20px 20px 30px 20px; border: none; }
+  .toggle-btn { padding: 8px 12px; font-size: 12px; }
 }
 </style>
 </head>
@@ -71,10 +68,10 @@ svg:active { cursor: grabbing; }
 <div class="container">
   <div class="title-bar">
     <h1>地推分區地圖</h1>
-    <span>可雙指縮放與拖曳</span>
+    <span>滑輪/雙指縮放地圖</span>
   </div>
   <div class="toggle-row">
-    <span class="toggle-label">人員狀態：</span>
+    <span class="toggle-label">人員：</span>
     <div id="toggleRow" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
   </div>
   <div class="map-wrap">
@@ -94,17 +91,16 @@ svg:active { cursor: grabbing; }
           <span id="p-person"></span>
           <button class="edit-btn" id="edit-person-btn">修改</button>
         </dd>
-        <dt>商業密度</dt><dd id="p-density"></dd>
-        <dt>覆蓋範圍</dt><dd id="p-coverage"></dd>
-        <dt>狀態</dt><dd id="p-status"></dd>
+        <dt>密度</dt><dd id="p-density"></dd>
+        <dt>範圍</dt><dd id="p-coverage"></dd>
         <dt>備註</dt><dd id="p-note"></dd>
       </div>
     </div>
   </div>
   <div class="legend">
-    <div class="legend-item"><span style="background:#2471a3"></span><span>有人在跑（高密度）</span></div>
-    <div class="legend-item"><span style="background:#1a6e3a"></span><span>有人在跑（中/低密度）</span></div>
-    <div class="legend-item"><span style="background:#2c2c2c;border:1px solid #444"></span><span>暫無人跑</span></div>
+    <div class="legend-item"><span style="background:#2471a3"></span><span>有人(高密度)</span></div>
+    <div class="legend-item"><span style="background:#1a6e3a"></span><span>有人(中低)</span></div>
+    <div class="legend-item"><span style="background:#2c2c2c;border:1px solid #444"></span><span>暫無</span></div>
   </div>
 </div>
 
@@ -115,7 +111,6 @@ svg:active { cursor: grabbing; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// 這裡已經是你的正確金鑰
 const firebaseConfig = {
   apiKey: "AIzaSyChJSl71yDiQ1f24KAavDyw_1ViWe-Gc1M",
   authDomain: "hk-map-d0d52.firebaseapp.com",
@@ -168,7 +163,7 @@ onValue(zonesRef, (snapshot) => {
   }
 });
 
-const C_HIGH="#2471a3", C_MID="#1a6e3a", C_LOW="#1a6e3a", C_OFF="#2c2c2c", S_ON="#1e2a3a", S_OFF="#3a3a3a";
+const C_HIGH="#2471a3", C_MID="#1a6e3a", C_OFF="#2c2c2c", S_ON="#1e2a3a", S_OFF="#3a3a3a";
 function gc(z){ if(!z||!z.on) return C_OFF; return z.dt==="high"?C_HIGH:C_MID; }
 function getName(d){ return d.properties.name||d.properties.NAME_1||d.properties.NAME||d.id; }
 
@@ -177,9 +172,7 @@ function cx(d){const n=getName(d);return path.centroid(d)[0]+(lp[n]?lp[n][0]:0);
 function cy(d){const n=getName(d);return path.centroid(d)[1]+(lp[n]?lp[n][1]:0);}
 
 const svg=d3.select("#map");
-// 升級 1：建立一個專門用來裝載「可縮放內容」的群組 <g>
 const mapGroup = svg.append("g");
-
 const projection=d3.geoMercator().center([114.18,22.35]).scale(55000).translate([400,260]);
 const path=d3.geoPath().projection(projection);
 
@@ -189,15 +182,11 @@ window.closePanel = function() {
   curActive = null;
 };
 
-// 升級 2：加入 D3 的縮放與拖曳行為
 const zoom = d3.zoom()
-  .scaleExtent([1, 6]) // 限制縮放比例：最小 1 倍，最大 6 倍
-  .on("zoom", (event) => {
-    mapGroup.attr("transform", event.transform);
-  });
+  .scaleExtent([1, 8])
+  .on("zoom", (event) => { mapGroup.attr("transform", event.transform); });
 svg.call(zoom);
 
-// 點擊地圖空白處關閉面板
 mapGroup.append("rect").attr("width",800).attr("height",520).attr("fill","transparent")
   .on("click",()=>{ window.closePanel(); });
 
@@ -205,7 +194,6 @@ d3.json("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json"
   const key=Object.keys(topo.objects)[0];
   const feats=topojson.feature(topo,topo.objects[key]).features;
 
-  // 注意這裡全數改成加入到 mapGroup，而不是 svg
   mapGroup.selectAll("path.district").data(feats).join("path")
     .attr("class","district").attr("d",path)
     .each(function(d){applyStyle(d3.select(this),d);})
@@ -232,8 +220,6 @@ d3.json("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json"
     .attr("x",d=>cx(d)).attr("y",d=>cy(d)+8);
     
   refresh();
-}).catch(()=>{
-  svg.append("text").attr("x",400).attr("y",260).attr("text-anchor","middle").attr("fill","#555").attr("font-size","14px").text("地圖數據加載失敗，請刷新重試");
 });
 
 function applyStyle(sel,d){
@@ -262,7 +248,6 @@ window.showPanel = function(z){
   document.getElementById("p-person").textContent=z.person;
   document.getElementById("p-density").textContent=z.density;
   document.getElementById("p-coverage").textContent=z.coverage;
-  document.getElementById("p-status").innerHTML=z.on?'<span class="status-tag status-on">進行中</span>':'<span class="status-tag status-off">暫停</span>';
   document.getElementById("p-note").textContent=z.note||"—";
 }
 
@@ -275,14 +260,14 @@ function buildToggles(){
   arr.forEach(({n,z})=>{
     const b=document.createElement("button");
     b.className="toggle-btn"+(z.on?" on":"");
-    b.textContent=z.person;b.title=z.area;
+    b.textContent=z.person;
     b.onclick=()=>{
       const ns = !z.on;
       const updates = {};
       Object.entries(window.zones).forEach(([key, zz])=>{
         if(zz.id === z.id) updates['/zones/' + key + '/on'] = ns;
       });
-      update(ref(db), updates).catch(err => console.error("更新狀態失敗", err));
+      update(ref(db), updates);
     };
     row.appendChild(b);
   });
@@ -290,20 +275,15 @@ function buildToggles(){
 
 document.getElementById("edit-person-btn").onclick = () => {
   if (!curActive || !window.zones[curActive]) return; 
-  
   const currentZone = window.zones[curActive];
   const newPerson = prompt(`請輸入【${currentZone.area}】的新負責人名稱：`, currentZone.person);
-
   if (newPerson !== null && newPerson.trim() !== "") {
     const finalName = newPerson.trim();
     const updates = {};
     Object.entries(window.zones).forEach(([key, zz])=>{
       if(zz.id === currentZone.id) updates['/zones/' + key + '/person'] = finalName;
     });
-    
-    update(ref(db), updates).catch((error) => {
-      alert("修改失敗，請檢查網絡或資料庫權限！");
-    });
+    update(ref(db), updates);
   }
 };
 </script>
