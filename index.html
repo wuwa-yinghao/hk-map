@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>香港地推路名地圖 - 團隊管理版</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
 <style>
 /* 滿版核心設定 */
 html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; }
@@ -29,7 +28,7 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 }
 .search-box input {
   padding: 10px 14px; border-radius: 8px; border: 1px solid #2d3a4e;
-  background: rgba(28, 35, 51, 0.95); color: #fff; outline: none; font-size: 13px; width: 200px;
+  background: rgba(28, 35, 51, 0.95); color: #fff; outline: none; font-size: 13px; width: 220px;
   backdrop-filter: blur(8px);
 }
 .search-box input::placeholder { color: #6a8099; }
@@ -91,8 +90,8 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
   <div class="map-wrap">
     
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="支援簡繁體搜尋 (如: 弥敦道)" onkeypress="if(event.key==='Enter') searchAddress();" />
-      <button onclick="searchAddress()">搜尋</button>
+      <input type="text" id="search-input" placeholder="支援中文/簡體搜尋地址 (如: 弥敦道)" onkeypress="if(event.key==='Enter') searchAddress();" />
+      <button id="search-btn" onclick="searchAddress()">搜尋</button>
     </div>
 
     <div id="map"></div>
@@ -364,40 +363,45 @@ window.deleteRunner = function(idx) {
 };
 
 // ==========================================
-// 地址搜尋功能 (支援簡繁轉換 + 限制在香港)
+// 全新升級：ArcGIS 強大中文地理搜尋 (簡繁通用)
 // ==========================================
 let searchMarker = null;
 
-// 初始化 OpenCC 轉換器 (簡轉繁)
-const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'hk' }) : (text) => text;
-
 window.searchAddress = function() {
-  let query = document.getElementById("search-input").value;
+  const query = document.getElementById("search-input").value;
   if (!query.trim()) return;
 
-  // 1. 將使用者輸入的文字(無論簡繁) 強制轉換為香港標準繁體
-  const hkQuery = converter(query);
+  const btn = document.getElementById("search-btn");
+  btn.textContent = "搜尋中...";
 
-  // 2. 加入 countrycodes=hk 確保只在香港內搜尋
-  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(hkQuery)}&countrycodes=hk&limit=1&accept-language=zh-HK`)
+  // 1. 使用 ArcGIS Geocoding API，完美支援簡體與繁體中文，且容錯率高
+  // 2. 透過 searchExtent 強制將搜尋結果限制在香港範圍內
+  const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&outSR=4326&maxLocations=1&langCode=zh-HK&searchExtent=113.82,22.13,114.45,22.58`;
+
+  fetch(url)
     .then(res => res.json())
     .then(data => {
-      if (data && data.length > 0) {
-        const lat = data[0].lat;
-        const lon = data[0].lon;
+      btn.textContent = "搜尋";
+      if (data.candidates && data.candidates.length > 0) {
+        const result = data.candidates[0];
+        const lat = result.location.y;
+        const lon = result.location.x;
         
         map.flyTo([lat, lon], 16, { duration: 1.5 });
         
         if (searchMarker) map.removeLayer(searchMarker);
         
         searchMarker = L.marker([lat, lon]).addTo(map)
-          .bindPopup(`<b>搜尋結果：</b><br>${data[0].display_name.split(',')[0]}`)
+          .bindPopup(`<b>搜尋結果：</b><br>${result.address}`)
           .openPopup();
       } else {
-        alert(`找不到地址「${query}」！\n(請嘗試輸入具體街道名稱，例如：彌敦道)`);
+        alert(`找不到地址「${query}」！\n請嘗試加上區域名稱，例如：旺角彌敦道`);
       }
     })
-    .catch(() => alert("搜尋服務暫時無法使用，請稍後再試。"));
+    .catch(() => {
+      btn.textContent = "搜尋";
+      alert("搜尋服務暫時無法使用，請稍後再試。");
+    });
 };
 </script>
 </body>
