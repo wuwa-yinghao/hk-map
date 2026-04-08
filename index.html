@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>香港地推路名地圖 - 團隊管理版</title>
+<title>香港地推路名地圖 - 螢光高亮版</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
 <style>
 /* 滿版核心設定 */
 html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; }
@@ -73,6 +74,18 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 .edit-btn { padding: 4px 10px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
 .edit-btn:hover { background: #4a90d9; color: #fff; border-color: #4a90d9; }
 
+/* 🌟 新增：出勤路線螢光特效 */
+.neon-road {
+  filter: drop-shadow(0 0 3px #00e5ff) drop-shadow(0 0 8px #00e5ff);
+  animation: neon-pulse 1.5s infinite alternate;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes neon-pulse {
+  0% { filter: drop-shadow(0 0 2px #00e5ff); stroke-opacity: 0.6; }
+  100% { filter: drop-shadow(0 0 6px #00e5ff) drop-shadow(0 0 12px #00e5ff); stroke-opacity: 1; }
+}
+
 @media (max-width: 600px) {
   .info-panel { bottom: 0; left: 0; right: 0; border-radius: 16px 16px 0 0; padding: 20px 20px 30px 20px; border: none; max-height: 85vh; }
   .search-box { top: 12px; left: 12px; right: 12px; }
@@ -83,7 +96,7 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 <body>
 <div class="container">
   <div class="title-bar">
-    <h1>香港地推路名地圖 (團隊版)</h1>
+    <h1>香港地推路名地圖</h1>
     <span id="sync-status">數據同步中...</span>
   </div>
   <div class="toggle-row" id="toggleRow"></div>
@@ -107,13 +120,11 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
           <span id="p-person" style="margin-right: 8px;"></span>
           <button class="edit-btn" id="edit-person-btn">修改</button>
         </dd>
-        
         <dt>大區備註</dt>
         <dd style="display:flex;align-items:center;">
           <span id="p-note" style="margin-right: 8px;"></span>
           <button class="edit-btn" id="edit-note-btn">修改</button>
         </dd>
-
         <dt style="margin-top: 8px; color: #e67e22; font-weight:bold;">跑腿團隊</dt>
         <dd style="margin-top: 8px;">
           <div id="p-runners-list" class="runner-list"></div>
@@ -126,6 +137,10 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
     <div class="legend-item"><span style="background:#2471a3;opacity:0.6"></span><span>有人(高密度)</span></div>
     <div class="legend-item"><span style="background:#1a6e3a;opacity:0.6"></span><span>有人(中低)</span></div>
     <div class="legend-item"><span style="background:#2c2c2c;opacity:0.4"></span><span>暫無</span></div>
+    <div class="legend-item">
+      <span style="background:#00e5ff; box-shadow: 0 0 8px #00e5ff; border-radius: 50%; height: 4px; width: 14px; margin-top:2px;"></span>
+      <span style="color:#00e5ff; font-weight:bold;">出勤中街道</span>
+    </div>
   </div>
 </div>
 
@@ -151,25 +166,20 @@ const db = getDatabase(app);
 let curActive = null;
 window.zones = {};
 
-// 香港邊界限制
-const hkBounds = L.latLngBounds(
-  L.latLng(22.13, 113.82),
-  L.latLng(22.58, 114.45)
-);
-
+const hkBounds = L.latLngBounds(L.latLng(22.13, 113.82), L.latLng(22.58, 114.45));
 const map = L.map('map', { 
-  zoomControl: false,
-  maxBounds: hkBounds,           
-  maxBoundsViscosity: 1.0,       
-  minZoom: 10,                   
-  maxZoom: 18                    
+  zoomControl: false, maxBounds: hkBounds, maxBoundsViscosity: 1.0, minZoom: 10, maxZoom: 18                    
 }).setView([22.35, 114.18], 11);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map);
 
+// 🌟 核心層級優化：建立專門放螢光路線的圖層，確保它浮在區塊上方
+map.createPane('neonPane');
+map.getPane('neonPane').style.zIndex = 450;
+let roadLayerGroup = L.layerGroup().addTo(map);
 let geoLayer = null;
+
+const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'hk' }) : (text) => text;
 
 fetch("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json")
   .then(res => res.json())
@@ -182,9 +192,8 @@ fetch("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json")
       document.getElementById('sync-status').textContent = "數據已同步";
       renderMap(geojson);
       buildToggles();
-      if(curActive && window.zones[curActive]) {
-        showPanel(window.zones[curActive]);
-      }
+      updateGlowingRoads(); // 🌟 觸發更新街道高亮
+      if(curActive && window.zones[curActive]) showPanel(window.zones[curActive]);
     });
   });
 
@@ -198,23 +207,76 @@ function renderMap(geojson) {
   geoLayer = L.geoJSON(geojson, {
     style: (feature) => {
       const z = window.zones[feature.properties.name || feature.id];
-      return {
-        fillColor: getZoneColor(z),
-        weight: 1.5,
-        opacity: 0.8,
-        color: '#1e2a3a',
-        fillOpacity: z && z.on ? 0.5 : 0.2
-      };
+      return { fillColor: getZoneColor(z), weight: 1.5, opacity: 0.8, color: '#1e2a3a', fillOpacity: z && z.on ? 0.5 : 0.2 };
     },
     onEachFeature: (feature, layer) => {
       layer.on('click', (e) => {
-        const name = feature.properties.name || feature.id;
-        curActive = name;
-        showPanel(window.zones[name]);
+        curActive = feature.properties.name || feature.id;
+        showPanel(window.zones[curActive]);
         L.DomEvent.stopPropagation(e);
       });
     }
   }).addTo(map);
+}
+
+// ==========================================
+// 🌟 全新功能：自動抓取並高亮出勤路段
+// ==========================================
+let lastRoadString = "";
+function updateGlowingRoads() {
+  let allRoads = new Set();
+  
+  // 收集所有「進行中」分區的跑腿路段
+  Object.values(window.zones).forEach(z => {
+    if(z.on && z.runners) {
+      z.runners.forEach(r => {
+        if(r.roads) {
+          r.roads.split(/[,，、]/).forEach(road => {
+            let clean = road.trim();
+            if(clean.length >= 2) allRoads.add(converter(clean)); // 過濾過短字元，確保精準度
+          });
+        }
+      });
+    }
+  });
+
+  // 如果路段沒有改變，就不需要重新去雲端要資料
+  const currentRoadString = Array.from(allRoads).sort().join("|");
+  if(currentRoadString === lastRoadString) return; 
+  lastRoadString = currentRoadString;
+  
+  roadLayerGroup.clearLayers();
+  if(allRoads.size === 0) return;
+
+  // 將路名打包成正則表達式，呼叫 Overpass API 提取街道座標
+  const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const roadRegex = Array.from(allRoads).map(escapeRegExp).join("|");
+  const query = `[out:json][timeout:15];way["name"~"${roadRegex}"](22.13,113.82,22.58,114.45);out geom;`;
+  
+  fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
+  .then(res => res.json())
+  .then(data => {
+    if(data && data.elements) {
+      data.elements.forEach(el => {
+        if(el.type === 'way' && el.geometry && el.tags && el.tags.name) {
+          // 二次確認確保匹配準確
+          const nameMatches = Array.from(allRoads).some(r => el.tags.name.includes(r));
+          if(nameMatches) {
+            const latlngs = el.geometry.map(pt => [pt.lat, pt.lon]);
+            // 畫出螢光路線
+            L.polyline(latlngs, {
+              color: '#00e5ff',
+              weight: 4,
+              opacity: 1.0,
+              className: 'neon-road',
+              pane: 'neonPane'
+            }).addTo(roadLayerGroup)
+              .bindPopup(`<b style="color:#00e5ff;">🟢 佔領中路段：</b><br>${el.tags.name}`);
+          }
+        }
+      });
+    }
+  }).catch(err => console.log("高亮路線加載失敗", err));
 }
 
 window.showPanel = function(z) {
@@ -309,13 +371,11 @@ document.getElementById("add-runner-btn").onclick = () => {
   if (!curActive) return;
   const newName = prompt("請輸入新「跑腿」的名字：");
   if (!newName || newName.trim() === "") return;
-  
-  const newRoads = prompt(`請輸入【${newName}】負責的街道名稱\n(多條路段請用逗號分隔)：`);
+  const newRoads = prompt(`請輸入【${newName}】負責的街道名稱\n(多條路段請用逗號、頓號分隔，例如：彌敦道, 亞皆老街)：`);
   if (newRoads === null) return;
   
   const targetId = window.zones[curActive].id;
   const updates = {};
-  
   Object.entries(window.zones).forEach(([key, val]) => {
     if (val.id === targetId) {
       const currentRunners = val.runners ? JSON.parse(JSON.stringify(val.runners)) : [];
@@ -362,20 +422,14 @@ window.deleteRunner = function(idx) {
   update(ref(db), updates);
 };
 
-// ==========================================
-// 全新升級：ArcGIS 強大中文地理搜尋 (簡繁通用)
-// ==========================================
 let searchMarker = null;
 
 window.searchAddress = function() {
   const query = document.getElementById("search-input").value;
   if (!query.trim()) return;
-
   const btn = document.getElementById("search-btn");
   btn.textContent = "搜尋中...";
 
-  // 1. 使用 ArcGIS Geocoding API，完美支援簡體與繁體中文，且容錯率高
-  // 2. 透過 searchExtent 強制將搜尋結果限制在香港範圍內
   const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&outSR=4326&maxLocations=1&langCode=zh-HK&searchExtent=113.82,22.13,114.45,22.58`;
 
   fetch(url)
@@ -383,25 +437,16 @@ window.searchAddress = function() {
     .then(data => {
       btn.textContent = "搜尋";
       if (data.candidates && data.candidates.length > 0) {
-        const result = data.candidates[0];
-        const lat = result.location.y;
-        const lon = result.location.x;
-        
+        const lat = data.candidates[0].location.y;
+        const lon = data.candidates[0].location.x;
         map.flyTo([lat, lon], 16, { duration: 1.5 });
-        
         if (searchMarker) map.removeLayer(searchMarker);
-        
-        searchMarker = L.marker([lat, lon]).addTo(map)
-          .bindPopup(`<b>搜尋結果：</b><br>${result.address}`)
-          .openPopup();
+        searchMarker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>搜尋結果：</b><br>${data.candidates[0].address}`).openPopup();
       } else {
         alert(`找不到地址「${query}」！\n請嘗試加上區域名稱，例如：旺角彌敦道`);
       }
     })
-    .catch(() => {
-      btn.textContent = "搜尋";
-      alert("搜尋服務暫時無法使用，請稍後再試。");
-    });
+    .catch(() => { btn.textContent = "搜尋"; alert("搜尋服務暫時無法使用，請稍後再試。"); });
 };
 </script>
 </body>
