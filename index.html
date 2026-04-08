@@ -47,7 +47,7 @@ svg { width: 100%; height: auto; display: block; }
 .toggle-btn:hover { border-color: #4a90d9; color: #4a90d9; }
 .toggle-btn.on { background: #1a4a2e; color: #2ecc71; border-color: #1a4a2e; }
 
-/* 這是新加入的：修改按鈕樣式 */
+/* 修改按鈕樣式 */
 .edit-btn { margin-left: 8px; padding: 2px 8px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
 .edit-btn:hover { background: #4a90d9; color: #fff; border-color: #4a90d9; }
 </style>
@@ -100,18 +100,9 @@ svg { width: 100%; height: auto; display: block; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// =====================================================================
-// ⚠️ 必改區域：請將下面的內容替換成你自己的 Firebase 專案設定！
-// =====================================================================
-const firebaseConfig = {
-  // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// ==========================================
+// 這裡已經換成你專屬的正確金鑰了，不用再改！
+// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyChJSl71yDiQ1f24KAavDyw_1ViWe-Gc1M",
   authDomain: "hk-map-d0d52.firebaseapp.com",
@@ -119,19 +110,13 @@ const firebaseConfig = {
   projectId: "hk-map-d0d52",
   storageBucket: "hk-map-d0d52.firebasestorage.app",
   messagingSenderId: "713658993672",
-  appId: "1:713658993672:web:e73f4a62f327c5b0e9d5bd",
-  measurementId: "G-P371DX8BGQ"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+  appId: "1:713658993672:web:e73f4a62f327c5b0e9d5bd"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 原始數據（當資料庫是空的時候會自動寫入這些）
+// 預設的初始數據 (如果資料庫是空的，會自動寫入這些)
 const defaultZones = {
   "Central and Western":{id:1,person:"人員1",area:"中西區",coverage:"中環、上環、西營盤、堅尼地城",density:"高",dt:"high",region:"港島",note:"金融商業核心",on:true},
   "Wan Chai":{id:2,person:"人員2",area:"灣仔區",coverage:"灣仔、銅鑼灣、天后、跑馬地",density:"高",dt:"high",region:"港島",note:"購物商業旺區",on:true},
@@ -141,4 +126,172 @@ const defaultZones = {
   "Sham Shui Po":{id:7,person:"人員7",area:"深水埗",coverage:"深水埗、長沙灣、荔枝角、鴨寮街",density:"中",dt:"mid",region:"九龍",note:"",on:true},
   "Kowloon City":{id:8,person:"人員8",area:"九龍城",coverage:"土瓜灣、紅磡、九龍城、何文田",density:"中",dt:"mid",region:"九龍",note:"",on:true},
   "Wong Tai Sin":{id:9,person:"人員9",area:"黃大仙",coverage:"黃大仙、鑽石山、慈雲山、新蒲崗",density:"中",dt:"mid",region:"九龍",note:"",on:true},
-  "Kwun Tong":{id:10,person:"人員10",area:"觀塘",coverage:"觀塘、牛頭角、藍田、秀茂坪、工業區",density:"高",dt:"high",
+  "Kwun Tong":{id:10,person:"人員10",area:"觀塘",coverage:"觀塘、牛頭角、藍田、秀茂坪、工業區",density:"高",dt:"high",region:"九龍",note:"工商業密集",on:true},
+  "Tsuen Wan":{id:11,person:"人員11",area:"荃灣+葵青",coverage:"荃灣市中心",density:"中",dt:"mid",region:"新界",note:"與葵青合併",on:true},
+  "Kwai Tsing":{id:11,person:"人員11",area:"荃灣+葵青",coverage:"葵涌、青衣",density:"中",dt:"mid",region:"新界",note:"與荃灣合併",on:true},
+  "Tuen Mun":{id:12,person:"人員12",area:"屯門",coverage:"屯門市中心、良景、三聖",density:"中",dt:"mid",region:"新界",note:"",on:true},
+  "Yuen Long":{id:13,person:"人員13",area:"元朗+天水圍",coverage:"元朗市中心、天水圍、錦田、洪水橋",density:"中",dt:"mid",region:"新界",note:"",on:true},
+  "North":{id:15,person:"人員15",area:"北區+西貢+離島",coverage:"上水、粉嶺",density:"低（合併）",dt:"low",region:"新界",note:"3區合併",on:true},
+  "Tai Po":{id:14,person:"人員14",area:"沙田+大埔",coverage:"大埔墟、大埔工業邨",density:"中",dt:"mid",region:"新界",note:"與沙田合併",on:true},
+  "Sha Tin":{id:14,person:"人員14",area:"沙田+大埔",coverage:"沙田市中心、火炭、大圍",density:"中",dt:"mid",region:"新界",note:"與大埔合併",on:true},
+  "Sai Kung":{id:15,person:"人員15",area:"北區+西貢+離島",coverage:"將軍澳、西貢",density:"低（合併）",dt:"low",region:"新界",note:"3區合併",on:true},
+  "Islands":{id:15,person:"人員15",area:"北區+西貢+離島",coverage:"東涌、大嶼山",density:"低（合併）",dt:"low",region:"新界",note:"3區合併",on:true}
+};
+
+window.zones = defaultZones; // 設為全域變數
+let curActive = null;
+
+// 自動初始化數據
+const zonesRef = ref(db, 'zones');
+get(zonesRef).then((snapshot) => {
+  if (!snapshot.exists()) {
+    set(zonesRef, defaultZones);
+  }
+});
+
+// 實時監聽 Firebase 數據變化
+onValue(zonesRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    window.zones = data;
+    refresh();
+    buildToggles();
+    if (curActive && window.zones[curActive]) {
+      showPanel(window.zones[curActive]);
+    }
+  }
+});
+
+// --- 地圖核心邏輯 ---
+const C_HIGH="#2471a3", C_MID="#1a6e3a", C_LOW="#1a6e3a", C_OFF="#2c2c2c", S_ON="#1e2a3a", S_OFF="#3a3a3a";
+function gc(z){ if(!z||!z.on) return C_OFF; return z.dt==="high"?C_HIGH:C_MID; }
+function getName(d){ return d.properties.name||d.properties.NAME_1||d.properties.NAME||d.id; }
+
+const lp = {"Central and Western":[0,-4],"Wan Chai":[0,0],"Eastern":[5,0],"Southern":[0,5],"Yau Tsim Mong":[0,0],"Sham Shui Po":[0,-2],"Kowloon City":[0,0],"Wong Tai Sin":[3,0],"Kwun Tong":[5,0],"Tsuen Wan":[0,0],"Kwai Tsing":[0,0],"Tuen Mun":[0,0],"Yuen Long":[0,-5],"North":[0,0],"Tai Po":[0,0],"Sha Tin":[0,0],"Sai Kung":[0,-5],"Islands":[15,10]};
+function cx(d){const n=getName(d);return path.centroid(d)[0]+(lp[n]?lp[n][0]:0);}
+function cy(d){const n=getName(d);return path.centroid(d)[1]+(lp[n]?lp[n][1]:0);}
+
+const svg=d3.select("#map");
+const projection=d3.geoMercator().center([114.18,22.35]).scale(55000).translate([400,260]);
+const path=d3.geoPath().projection(projection);
+
+window.closePanel = function() {
+  document.getElementById("panel").classList.remove("show");
+  svg.selectAll(".district").classed("active",false);
+  curActive = null;
+};
+
+svg.append("rect").attr("width",800).attr("height",520).attr("fill","transparent")
+  .on("click",()=>{ window.closePanel(); });
+
+d3.json("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json").then(topo=>{
+  const key=Object.keys(topo.objects)[0];
+  const feats=topojson.feature(topo,topo.objects[key]).features;
+
+  svg.selectAll("path.district").data(feats).join("path")
+    .attr("class","district").attr("d",path)
+    .each(function(d){applyStyle(d3.select(this),d);})
+    .on("click",function(ev,d){
+      ev.stopPropagation();
+      const n=getName(d);
+      if(curActive===n){ window.closePanel(); }
+      else {
+        svg.selectAll(".district").classed("active",false);
+        d3.select(this).classed("active",true);
+        curActive=n;
+        const z=window.zones[n];
+        if(z) showPanel(z);
+      }
+    });
+
+  svg.selectAll("text.district-label").data(feats).join("text")
+    .attr("class","district-label")
+    .attr("x",d=>cx(d)).attr("y",d=>cy(d)-5)
+    .text(d=>{const z=window.zones[getName(d)];return z?z.area.split("+")[0].split("—")[0].trim():getName(d);});
+
+  svg.selectAll("text.person-label").data(feats).join("text")
+    .attr("class","person-label")
+    .attr("x",d=>cx(d)).attr("y",d=>cy(d)+8);
+    
+  refresh(); // 初次渲染
+}).catch(()=>{
+  svg.append("text").attr("x",400).attr("y",260).attr("text-anchor","middle").attr("fill","#555").attr("font-size","14px").text("地圖數據加載失敗，請刷新重試");
+});
+
+function applyStyle(sel,d){
+  const z=window.zones[getName(d)];
+  sel.attr("fill",gc(z)).attr("stroke",z&&z.on?S_ON:S_OFF).attr("opacity",z&&z.on?1:0.4);
+}
+
+function refresh(){
+  svg.selectAll("path.district").each(function(d){applyStyle(d3.select(this),d);});
+  svg.selectAll("text.district-label").each(function(d){
+    const z=window.zones[getName(d)];d3.select(this).attr("fill",z&&z.on?"#fff":"rgba(255,255,255,0.25)");
+  });
+  svg.selectAll("text.person-label").each(function(d){
+    const z=window.zones[getName(d)];
+    d3.select(this).text(z?(z.on?z.person:"暫停"):"").attr("fill",z&&z.on?"rgba(255,255,255,0.65)":"rgba(255,255,255,0.2)");
+  });
+}
+
+window.showPanel = function(z){
+  const p=document.getElementById("panel");
+  p.classList.remove("show");void p.offsetWidth;p.classList.add("show");
+  document.getElementById("p-badge").style.background=gc(z);
+  document.getElementById("p-badge").textContent=z.id;
+  document.getElementById("p-title").textContent=z.area;
+  document.getElementById("p-sub").textContent=z.region+" · "+z.density;
+  document.getElementById("p-person").textContent=z.person;
+  document.getElementById("p-density").textContent=z.density;
+  document.getElementById("p-coverage").textContent=z.coverage;
+  document.getElementById("p-status").innerHTML=z.on?'<span class="status-tag status-on">進行中</span>':'<span class="status-tag status-off">暫停</span>';
+  document.getElementById("p-note").textContent=z.note||"—";
+}
+
+// 動態建立切換按鈕，並綁定 Firebase 寫入
+function buildToggles(){
+  const seen=new Set(),arr=[];
+  Object.entries(window.zones).forEach(([n,z])=>{if(!seen.has(z.id)){seen.add(z.id);arr.push({n,z});}});
+  arr.sort((a,b)=>a.z.id-b.z.id);
+  const row=document.getElementById("toggleRow");
+  row.innerHTML = ""; // 清空重建
+  arr.forEach(({n,z})=>{
+    const b=document.createElement("button");
+    b.className="toggle-btn"+(z.on?" on":"");
+    b.textContent=z.person;b.title=z.area;
+    b.onclick=()=>{
+      const ns = !z.on;
+      // 找出所有同 ID 的區域，一起同步到雲端
+      const updates = {};
+      Object.entries(window.zones).forEach(([key, zz])=>{
+        if(zz.id === z.id) updates['/zones/' + key + '/on'] = ns;
+      });
+      update(ref(db), updates).catch(err => console.error("更新失敗", err));
+    };
+    row.appendChild(b);
+  });
+}
+
+// 監聽修改負責人按鈕
+document.getElementById("edit-person-btn").onclick = () => {
+  if (!curActive || !window.zones[curActive]) return; 
+  
+  const currentZone = window.zones[curActive];
+  const newPerson = prompt(`請輸入【${currentZone.area}】的新負責人名稱：`, currentZone.person);
+
+  if (newPerson !== null && newPerson.trim() !== "") {
+    const finalName = newPerson.trim();
+    // 找出所有同 ID 的區域，把它們的負責人名字一起更新，保證數據一致
+    const updates = {};
+    Object.entries(window.zones).forEach(([key, zz])=>{
+      if(zz.id === currentZone.id) updates['/zones/' + key + '/person'] = finalName;
+    });
+    
+    update(ref(db), updates).catch((error) => {
+      alert("修改失敗，請檢查網絡或資料庫權限！");
+    });
+  }
+};
+</script>
+</body>
+</html>
