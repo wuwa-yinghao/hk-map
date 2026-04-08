@@ -13,16 +13,37 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 
 .title-bar { background: #0f2940; color: #fff; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 1000; }
 .title-bar h1 { font-size: 18px; font-weight: 600; }
+.title-bar span { font-size: 12px; opacity: 0.6; }
 
 /* 地圖容器 */
-#map { flex-grow: 1; width: 100%; background: #0d1117; z-index: 1; }
+.map-wrap { position: relative; flex-grow: 1; width: 100%; background: #0d1117; z-index: 1; display: flex; flex-direction: column; }
+#map { flex-grow: 1; width: 100%; z-index: 1; }
+
+/* 新增：搜尋列樣式 */
+.search-box {
+  position: absolute; top: 16px; right: 16px; z-index: 1000;
+  display: flex; gap: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border-radius: 8px;
+}
+.search-box input {
+  padding: 10px 14px; border-radius: 8px; border: 1px solid #2d3a4e;
+  background: rgba(28, 35, 51, 0.95); color: #fff; outline: none; font-size: 13px; width: 200px;
+  backdrop-filter: blur(8px);
+}
+.search-box input::placeholder { color: #6a8099; }
+.search-box button {
+  padding: 10px 14px; border-radius: 8px; border: none; background: #4a90d9;
+  color: white; cursor: pointer; font-weight: bold; transition: background 0.2s;
+}
+.search-box button:hover { background: #357abd; }
 
 .info-panel {
   position: absolute; bottom: 20px; left: 16px; right: 16px;
   background: rgba(28, 35, 51, 0.96); border: 1px solid #2d3a4e; border-radius: 12px;
   padding: 16px 20px; display: none; z-index: 1001;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5); backdrop-filter: blur(10px);
-  max-height: 75vh; overflow-y: auto; /* 若內容過多允許上下滑動 */
+  max-height: 75vh; overflow-y: auto;
 }
 .info-panel.show { display: block; }
 .info-panel .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 24px; color: #888; padding: 4px;}
@@ -34,7 +55,6 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 .info-details dt { color: #6a8099; padding-top: 2px; }
 .info-details dd { color: #b8c8d8; font-weight: 500; margin: 0; }
 
-/* 跑腿名單專屬樣式 */
 .runner-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
 .runner-item { background: rgba(255,255,255,0.04); padding: 8px 10px; border-radius: 6px; border: 1px solid #2d3a4e; }
 .runner-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -55,6 +75,8 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 
 @media (max-width: 600px) {
   .info-panel { bottom: 0; left: 0; right: 0; border-radius: 16px 16px 0 0; padding: 20px 20px 30px 20px; border: none; max-height: 85vh; }
+  .search-box { top: 12px; left: 12px; right: 12px; }
+  .search-box input { width: 100%; flex-grow: 1; }
 }
 </style>
 </head>
@@ -65,31 +87,39 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
     <span id="sync-status">數據同步中...</span>
   </div>
   <div class="toggle-row" id="toggleRow"></div>
-  <div id="map"></div>
-  <div class="info-panel" id="panel">
-    <span class="close" onclick="closePanel()">&times;</span>
-    <div class="info-header">
-      <div class="info-badge" id="p-badge"></div>
-      <div><div class="info-title" id="p-title"></div></div>
+  <div class="map-wrap">
+    
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="搜尋香港地址/街道..." onkeypress="if(event.key==='Enter') searchAddress();" />
+      <button onclick="searchAddress()">搜尋</button>
     </div>
-    <div class="info-details">
-      <dt>大區主管</dt>
-      <dd style="display:flex;align-items:center;">
-        <span id="p-person" style="margin-right: 8px;"></span>
-        <button class="edit-btn" id="edit-person-btn">修改</button>
-      </dd>
-      
-      <dt>大區備註</dt>
-      <dd style="display:flex;align-items:center;">
-        <span id="p-note" style="margin-right: 8px;"></span>
-        <button class="edit-btn" id="edit-note-btn">修改</button>
-      </dd>
 
-      <dt style="margin-top: 8px; color: #e67e22; font-weight:bold;">跑腿團隊</dt>
-      <dd style="margin-top: 8px;">
-        <div id="p-runners-list" class="runner-list"></div>
-        <button class="edit-btn" id="add-runner-btn" style="margin-top:4px;">+ 新增跑腿與路線</button>
-      </dd>
+    <div id="map"></div>
+    <div class="info-panel" id="panel">
+      <span class="close" onclick="closePanel()">&times;</span>
+      <div class="info-header">
+        <div class="info-badge" id="p-badge"></div>
+        <div><div class="info-title" id="p-title"></div></div>
+      </div>
+      <div class="info-details">
+        <dt>大區主管</dt>
+        <dd style="display:flex;align-items:center;">
+          <span id="p-person" style="margin-right: 8px;"></span>
+          <button class="edit-btn" id="edit-person-btn">修改</button>
+        </dd>
+        
+        <dt>大區備註</dt>
+        <dd style="display:flex;align-items:center;">
+          <span id="p-note" style="margin-right: 8px;"></span>
+          <button class="edit-btn" id="edit-note-btn">修改</button>
+        </dd>
+
+        <dt style="margin-top: 8px; color: #e67e22; font-weight:bold;">跑腿團隊</dt>
+        <dd style="margin-top: 8px;">
+          <div id="p-runners-list" class="runner-list"></div>
+          <button class="edit-btn" id="add-runner-btn" style="margin-top:4px;">+ 新增跑腿與路線</button>
+        </dd>
+      </div>
     </div>
   </div>
   <div class="legend">
@@ -121,8 +151,21 @@ const db = getDatabase(app);
 let curActive = null;
 window.zones = {};
 
-// 初始化 Leaflet 地圖
-const map = L.map('map', { zoomControl: false }).setView([22.35, 114.18], 11);
+// ==========================================
+// 核心升級：限制地圖只能在香港範圍內滑動
+// ==========================================
+const hkBounds = L.latLngBounds(
+  L.latLng(22.13, 113.82), // 西南角邊界
+  L.latLng(22.58, 114.45)  // 東北角邊界
+);
+
+const map = L.map('map', { 
+  zoomControl: false,
+  maxBounds: hkBounds,           // 鎖定邊界，拉不出去
+  maxBoundsViscosity: 1.0,       // 完全硬性邊界限制
+  minZoom: 10,                   // 限制最小縮放，避免地圖變太小
+  maxZoom: 18                    // 限制最大縮放
+}).setView([22.35, 114.18], 11);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution: '&copy; OpenStreetMap'
@@ -186,7 +229,6 @@ window.showPanel = function(z) {
   document.getElementById("p-person").textContent = z.person;
   document.getElementById("p-note").textContent = z.note || "—";
   
-  // 渲染跑腿清單
   const runnersList = document.getElementById("p-runners-list");
   runnersList.innerHTML = "";
   const runners = z.runners || [];
@@ -226,7 +268,6 @@ function buildToggles() {
     seen.add(z.id);
     const b = document.createElement("button");
     b.className = "toggle-btn" + (z.on ? " on" : "");
-    // 切換列顯示分區主管的名字
     b.textContent = z.person;
     b.onclick = () => {
       const ns = !z.on;
@@ -240,7 +281,6 @@ function buildToggles() {
   });
 }
 
-// 修改大區主管
 document.getElementById("edit-person-btn").onclick = () => {
   if (!curActive) return;
   const newPerson = prompt("請輸入該區「主管/負責人」名稱：", window.zones[curActive].person);
@@ -254,7 +294,6 @@ document.getElementById("edit-person-btn").onclick = () => {
   }
 };
 
-// 修改大區備註
 document.getElementById("edit-note-btn").onclick = () => {
   if (!curActive) return;
   const newNote = prompt("請輸入備註：", window.zones[curActive].note);
@@ -268,9 +307,6 @@ document.getElementById("edit-note-btn").onclick = () => {
   }
 };
 
-// === 跑腿與街道管理全域函數 ===
-
-// 1. 新增跑腿
 document.getElementById("add-runner-btn").onclick = () => {
   if (!curActive) return;
   const newName = prompt("請輸入新「跑腿」的名字：");
@@ -284,7 +320,6 @@ document.getElementById("add-runner-btn").onclick = () => {
   
   Object.entries(window.zones).forEach(([key, val]) => {
     if (val.id === targetId) {
-      // 拷貝現有跑腿清單，若無則建立空陣列
       const currentRunners = val.runners ? JSON.parse(JSON.stringify(val.runners)) : [];
       currentRunners.push({ name: newName.trim(), roads: newRoads.trim() });
       updates['zones/' + key + '/runners'] = currentRunners;
@@ -293,21 +328,17 @@ document.getElementById("add-runner-btn").onclick = () => {
   update(ref(db), updates);
 };
 
-// 2. 編輯跑腿資料
 window.editRunner = function(idx) {
   if (!curActive) return;
   const z = window.zones[curActive];
   const runner = z.runners[idx];
-  
   const newName = prompt("修改跑腿名字：", runner.name);
   if (newName === null || newName.trim() === "") return;
-  
   const newRoads = prompt(`修改【${newName}】的負責路段：`, runner.roads);
   if (newRoads === null) return;
   
   const targetId = z.id;
   const updates = {};
-  
   Object.entries(window.zones).forEach(([key, val]) => {
     if (val.id === targetId) {
       const currentRunners = JSON.parse(JSON.stringify(val.runners));
@@ -318,24 +349,54 @@ window.editRunner = function(idx) {
   update(ref(db), updates);
 };
 
-// 3. 刪除跑腿
 window.deleteRunner = function(idx) {
   if (!curActive) return;
   if (!confirm("確定要將這位跑腿從這個分區刪除嗎？")) return;
-  
   const targetId = window.zones[curActive].id;
   const updates = {};
-  
   Object.entries(window.zones).forEach(([key, val]) => {
     if (val.id === targetId) {
       const currentRunners = JSON.parse(JSON.stringify(val.runners));
-      currentRunners.splice(idx, 1); // 刪除指定索引的跑腿
+      currentRunners.splice(idx, 1);
       updates['zones/' + key + '/runners'] = currentRunners;
     }
   });
   update(ref(db), updates);
 };
 
+// ==========================================
+// 新增：地址搜尋功能 (限制在香港)
+// ==========================================
+let searchMarker = null;
+
+window.searchAddress = function() {
+  const query = document.getElementById("search-input").value;
+  if (!query.trim()) return;
+
+  // 使用開源 OpenStreetMap API 進行地理編碼，且限制為香港 (countrycodes=hk)
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=hk&limit=1`)
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.length > 0) {
+        const lat = data[0].lat;
+        const lon = data[0].lon;
+        
+        // 飛到搜尋的座標位置，並放大地圖
+        map.flyTo([lat, lon], 16, { duration: 1.5 });
+        
+        // 如果之前有標記，先移除
+        if (searchMarker) map.removeLayer(searchMarker);
+        
+        // 在搜尋位置加上標記
+        searchMarker = L.marker([lat, lon]).addTo(map)
+          .bindPopup(`<b>搜尋結果：</b><br>${data[0].display_name.split(',')[0]}`)
+          .openPopup();
+      } else {
+        alert("找不到該地址！\n(請嘗試使用街道名稱，例如：彌敦道、皇后大道中)");
+      }
+    })
+    .catch(() => alert("搜尋服務暫時無法使用，請稍後再試。"));
+};
 </script>
 </body>
 </html>
