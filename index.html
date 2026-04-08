@@ -5,18 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>香港地推分區地圖</title>
 <style>
-/* 滿版核心設定：強迫 HTML 和 Body 佔滿 100% 寬高，並禁止整頁捲動 */
+/* 滿版核心設定 */
 html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; }
 body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-serif; background: #0d1117; color: #e0e0e0; }
-
-/* 容器佔滿全螢幕 (100vh) */
 .container { width: 100%; height: 100vh; background: #161b22; display: flex; flex-direction: column; }
 
 .title-bar { background: #0f2940; color: #fff; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 20; }
 .title-bar h1 { font-size: 18px; font-weight: 600; }
 .title-bar span { font-size: 11px; opacity: 0.5; }
 
-/* 地圖包圍層：佔滿剩餘垂直空間 */
 .map-wrap { position: relative; flex-grow: 1; user-select: none; -webkit-user-select: none; touch-action: none; overflow: hidden; background: #0d1117; }
 svg { width: 100%; height: 100%; display: block; cursor: grab; }
 svg:active { cursor: grabbing; }
@@ -27,7 +24,6 @@ svg:active { cursor: grabbing; }
 .district-label { pointer-events: none; font-size: 10px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
 .person-label { pointer-events: none; font-size: 8px; font-weight: 500; text-anchor: middle; dominant-baseline: central; }
 
-/* 詳情面板：在電腦版懸浮，在手機版底部滿版 */
 .info-panel {
   position: absolute; bottom: 16px; left: 16px; right: 16px;
   background: rgba(28, 35, 51, 0.96); border: 1px solid #2d3a4e; border-radius: 12px;
@@ -95,7 +91,11 @@ svg:active { cursor: grabbing; }
         </dd>
         <dt>密度</dt><dd id="p-density"></dd>
         <dt>範圍</dt><dd id="p-coverage"></dd>
-        <dt>備註</dt><dd id="p-note"></dd>
+        <dt>備註</dt>
+        <dd style="display: flex; align-items: center;">
+          <span id="p-note"></span>
+          <button class="edit-btn" id="edit-note-btn">修改</button>
+        </dd>
       </div>
     </div>
   </div>
@@ -174,9 +174,7 @@ function cx(d){const n=getName(d);return path.centroid(d)[0]+(lp[n]?lp[n][0]:0);
 function cy(d){const n=getName(d);return path.centroid(d)[1]+(lp[n]?lp[n][1]:0);}
 
 const svg=d3.select("#map");
-// 這裡必須建立一個 g 標籤，縮放功能是作用在這個 g 標籤上
 const mapGroup = svg.append("g");
-
 const projection=d3.geoMercator().center([114.18,22.35]).scale(55000).translate([400,260]);
 const path=d3.geoPath().projection(projection);
 
@@ -186,12 +184,9 @@ window.closePanel = function() {
   curActive = null;
 };
 
-// 正確配置縮放 (Zoom) 功能
 const zoom = d3.zoom()
-  .scaleExtent([1, 10]) // 允許放大的倍數
-  .on("zoom", (event) => {
-    mapGroup.attr("transform", event.transform);
-  });
+  .scaleExtent([1, 10])
+  .on("zoom", (event) => { mapGroup.attr("transform", event.transform); });
 svg.call(zoom);
 
 mapGroup.append("rect").attr("width",800).attr("height",520).attr("fill","transparent")
@@ -280,7 +275,7 @@ function buildToggles(){
   });
 }
 
-// 綁定修改按鈕
+// 修改負責人功能
 document.getElementById("edit-person-btn").onclick = () => {
   if (!curActive || !window.zones[curActive]) return; 
   const currentZone = window.zones[curActive];
@@ -290,6 +285,21 @@ document.getElementById("edit-person-btn").onclick = () => {
     const updates = {};
     Object.entries(window.zones).forEach(([key, zz])=>{
       if(zz.id === currentZone.id) updates['/zones/' + key + '/person'] = finalName;
+    });
+    update(ref(db), updates);
+  }
+};
+
+// 新增：修改備註功能
+document.getElementById("edit-note-btn").onclick = () => {
+  if (!curActive || !window.zones[curActive]) return; 
+  const currentZone = window.zones[curActive];
+  const newNote = prompt(`請輸入【${currentZone.area}】的新備註內容：`, currentZone.note || "");
+  if (newNote !== null) {
+    const finalNote = newNote.trim();
+    const updates = {};
+    Object.entries(window.zones).forEach(([key, zz])=>{
+      if(zz.id === currentZone.id) updates['/zones/' + key + '/note'] = finalNote;
     });
     update(ref(db), updates);
   }
