@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>香港地推路名地圖 - 螢光高亮版</title>
+<title>香港地推路名地圖 - 專業中文化版</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
 <style>
@@ -19,6 +19,26 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 /* 地圖容器 */
 .map-wrap { position: relative; flex-grow: 1; width: 100%; background: #0d1117; z-index: 1; display: flex; flex-direction: column; }
 #map { flex-grow: 1; width: 100%; z-index: 1; }
+
+/* 🌟 底圖黑夜模式濾鏡 (將普通中文地圖轉換為超帥的黑夜模式) */
+.dark-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%) saturate(120%);
+}
+
+/* 🌟 分區中央的中文名稱標籤 */
+.district-label-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 6px #000, 0 0 10px #000 !important;
+  pointer-events: none !important;
+}
+.leaflet-tooltip-top::before, .leaflet-tooltip-bottom::before, .leaflet-tooltip-left::before, .leaflet-tooltip-right::before {
+  display: none !important; /* 隱藏小箭頭 */
+}
 
 /* 搜尋列樣式 */
 .search-box {
@@ -74,16 +94,11 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
 .edit-btn { padding: 4px 10px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
 .edit-btn:hover { background: #4a90d9; color: #fff; border-color: #4a90d9; }
 
-/* 🌟 新增：出勤路線螢光特效 */
+/* 🌟 修改：出勤路線螢光特效 (取消閃爍，改為常亮) */
 .neon-road {
   filter: drop-shadow(0 0 3px #00e5ff) drop-shadow(0 0 8px #00e5ff);
-  animation: neon-pulse 1.5s infinite alternate;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-@keyframes neon-pulse {
-  0% { filter: drop-shadow(0 0 2px #00e5ff); stroke-opacity: 0.6; }
-  100% { filter: drop-shadow(0 0 6px #00e5ff) drop-shadow(0 0 12px #00e5ff); stroke-opacity: 1; }
 }
 
 @media (max-width: 600px) {
@@ -134,9 +149,7 @@ body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-ser
     </div>
   </div>
   <div class="legend">
-    <div class="legend-item"><span style="background:#2471a3;opacity:0.6"></span><span>有人(高密度)</span></div>
-    <div class="legend-item"><span style="background:#1a6e3a;opacity:0.6"></span><span>有人(中低)</span></div>
-    <div class="legend-item"><span style="background:#2c2c2c;opacity:0.4"></span><span>暫無</span></div>
+    <div class="legend-item"><span style="background:transparent; border: 2px solid #3a4b66;"></span><span>分區邊界</span></div>
     <div class="legend-item">
       <span style="background:#00e5ff; box-shadow: 0 0 8px #00e5ff; border-radius: 50%; height: 4px; width: 14px; margin-top:2px;"></span>
       <span style="color:#00e5ff; font-weight:bold;">出勤中街道</span>
@@ -171,9 +184,12 @@ const map = L.map('map', {
   zoomControl: false, maxBounds: hkBounds, maxBoundsViscosity: 1.0, minZoom: 10, maxZoom: 18                    
 }).setView([22.35, 114.18], 11);
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OSM' }).addTo(map);
+// 🌟 將底圖換成了 Google Maps 的繁體中文版，並套用強大的黑夜 CSS 濾鏡
+L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=zh-HK', { 
+  attribution: '&copy; Google Maps',
+  className: 'dark-tiles'
+}).addTo(map);
 
-// 🌟 核心層級優化：建立專門放螢光路線的圖層，確保它浮在區塊上方
 map.createPane('neonPane');
 map.getPane('neonPane').style.zIndex = 450;
 let roadLayerGroup = L.layerGroup().addTo(map);
@@ -192,26 +208,40 @@ fetch("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json")
       document.getElementById('sync-status').textContent = "數據已同步";
       renderMap(geojson);
       buildToggles();
-      updateGlowingRoads(); // 🌟 觸發更新街道高亮
+      updateGlowingRoads(); 
       if(curActive && window.zones[curActive]) showPanel(window.zones[curActive]);
     });
   });
-
-function getZoneColor(z) {
-  if (!z || !z.on) return "#2c2c2c";
-  return z.dt === "high" ? "#2471a3" : "#1a6e3a";
-}
 
 function renderMap(geojson) {
   if (geoLayer) map.removeLayer(geoLayer);
   geoLayer = L.geoJSON(geojson, {
     style: (feature) => {
-      const z = window.zones[feature.properties.name || feature.id];
-      return { fillColor: getZoneColor(z), weight: 1.5, opacity: 0.8, color: '#1e2a3a', fillOpacity: z && z.on ? 0.5 : 0.2 };
+      // 🌟 將所有地區的色塊移除，只保留低調乾淨的邊界線
+      return { 
+        fillColor: '#1c2333', 
+        weight: 1.5, 
+        opacity: 0.8, 
+        color: '#3a4b66', 
+        fillOpacity: 0.05 
+      };
     },
     onEachFeature: (feature, layer) => {
+      const name = feature.properties.name || feature.id;
+      const z = window.zones[name];
+      
+      // 🌟 新增：在每個分區的中心點標示「中文區域名稱」
+      if(z) {
+        const displayName = z.area.split('+')[0].split('—')[0].trim();
+        layer.bindTooltip(displayName, {
+          permanent: true,
+          direction: 'center',
+          className: 'district-label-tooltip'
+        });
+      }
+
       layer.on('click', (e) => {
-        curActive = feature.properties.name || feature.id;
+        curActive = name;
         showPanel(window.zones[curActive]);
         L.DomEvent.stopPropagation(e);
       });
@@ -219,28 +249,23 @@ function renderMap(geojson) {
   }).addTo(map);
 }
 
-// ==========================================
-// 🌟 全新功能：自動抓取並高亮出勤路段
-// ==========================================
 let lastRoadString = "";
 function updateGlowingRoads() {
   let allRoads = new Set();
   
-  // 收集所有「進行中」分區的跑腿路段
   Object.values(window.zones).forEach(z => {
     if(z.on && z.runners) {
       z.runners.forEach(r => {
         if(r.roads) {
           r.roads.split(/[,，、]/).forEach(road => {
             let clean = road.trim();
-            if(clean.length >= 2) allRoads.add(converter(clean)); // 過濾過短字元，確保精準度
+            if(clean.length >= 2) allRoads.add(converter(clean)); 
           });
         }
       });
     }
   });
 
-  // 如果路段沒有改變，就不需要重新去雲端要資料
   const currentRoadString = Array.from(allRoads).sort().join("|");
   if(currentRoadString === lastRoadString) return; 
   lastRoadString = currentRoadString;
@@ -248,7 +273,6 @@ function updateGlowingRoads() {
   roadLayerGroup.clearLayers();
   if(allRoads.size === 0) return;
 
-  // 將路名打包成正則表達式，呼叫 Overpass API 提取街道座標
   const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const roadRegex = Array.from(allRoads).map(escapeRegExp).join("|");
   const query = `[out:json][timeout:15];way["name"~"${roadRegex}"](22.13,113.82,22.58,114.45);out geom;`;
@@ -259,11 +283,10 @@ function updateGlowingRoads() {
     if(data && data.elements) {
       data.elements.forEach(el => {
         if(el.type === 'way' && el.geometry && el.tags && el.tags.name) {
-          // 二次確認確保匹配準確
           const nameMatches = Array.from(allRoads).some(r => el.tags.name.includes(r));
           if(nameMatches) {
             const latlngs = el.geometry.map(pt => [pt.lat, pt.lon]);
-            // 畫出螢光路線
+            // 🌟 畫出螢光路線 (常亮)
             L.polyline(latlngs, {
               color: '#00e5ff',
               weight: 4,
@@ -283,7 +306,7 @@ window.showPanel = function(z) {
   if(!z) return;
   const p = document.getElementById("panel");
   p.classList.add("show");
-  document.getElementById("p-badge").style.background = getZoneColor(z);
+  document.getElementById("p-badge").style.background = "#2471a3"; // 統一顯示深藍徽章
   document.getElementById("p-badge").textContent = z.id;
   document.getElementById("p-title").textContent = z.area;
   document.getElementById("p-person").textContent = z.person;
