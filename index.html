@@ -129,8 +129,13 @@
       }, [managers, loaded]);
 
       const DEPOSIT_RATE = 0.2; // 押金比例 20%
-      const calcDeposit = (amount) => Math.round((Number(amount) || 0) * DEPOSIT_RATE);
-      const calcPayout = (amount) => (Number(amount) || 0) - calcDeposit(amount);
+      // 預設扣押金（舊資料沒有 deductDeposit 欄位時，視為 true 保持向後兼容）
+      const shouldDeduct = (b) => b.deductDeposit !== false;
+      const calcDeposit = (bro) => {
+        if (!shouldDeduct(bro)) return 0;
+        return Math.round((Number(bro.amount) || 0) * DEPOSIT_RATE);
+      };
+      const calcPayout = (bro) => (Number(bro.amount) || 0) - calcDeposit(bro);
 
       const summary = useMemo(() => {
         let totalOrders = 0, totalBonus = 0, totalPayout = 0, totalDeposit = 0, paidCount = 0, broCount = 0;
@@ -140,8 +145,8 @@
           totalBonus += amt;
           broCount += 1;
           if (b.isPaid) {
-            totalPayout += calcPayout(amt);
-            totalDeposit += calcDeposit(amt);
+            totalPayout += calcPayout(b);
+            totalDeposit += calcDeposit(b);
             paidCount += 1;
           }
         }));
@@ -156,8 +161,8 @@
           orders += Number(b.orders) || 0;
           bonus += amt;
           if (b.isPaid) {
-            payout += calcPayout(amt);
-            deposit += calcDeposit(amt);
+            payout += calcPayout(b);
+            deposit += calcDeposit(b);
           }
         });
         return { orders, bonus, payout, deposit, outstanding: bonus - payout - deposit };
@@ -167,7 +172,7 @@
       const updateManagerName = (id, v) => setManagers(managers.map(m => m.id === id ? { ...m, managerName: v } : m));
       const deleteManager = (id) => setManagers(managers.filter(m => m.id !== id));
       const addBro = (mid) => setManagers(managers.map(m => m.id === mid
-        ? { ...m, bros: [...(m.bros || []), { id: Date.now().toString(), name: '', phone: '', category: '', location: '', orders: 0, amount: 0, isPaid: false }] }
+        ? { ...m, bros: [...(m.bros || []), { id: Date.now().toString(), name: '', phone: '', category: '', location: '', orders: 0, amount: 0, deductDeposit: true, isPaid: false }] }
         : m));
       const updateBro = (mid, bid, field, val) => setManagers(managers.map(m => m.id === mid
         ? { ...m, bros: (m.bros || []).map(b => b.id === bid ? { ...b, [field]: val } : b) }
@@ -178,10 +183,10 @@
         ? { ...m, bros: (m.bros || []).map(b => ({ ...b, isPaid: true })) } : m));
 
       const exportCSV = () => {
-        const rows = [['負責人', '小老弟', '電話', '負責品類', '新增商家', '獎金', '押金(20%)', '實派(80%)', '狀態']];
+        const rows = [['負責人', '小老弟', '電話', '負責品類', '負責地點', '新增商家', '獎金', '是否扣押金', '押金', '實派', '狀態']];
         managers.forEach(m => (m.bros || []).forEach(b => {
           const amt = Number(b.amount) || 0;
-          rows.push([m.managerName || '(未命名)', b.name, b.phone, b.category || '', b.orders, amt, calcDeposit(amt), calcPayout(amt), b.isPaid ? '已結帳' : '未結帳']);
+          rows.push([m.managerName || '(未命名)', b.name, b.phone, b.category || '', b.location || '', b.orders, amt, shouldDeduct(b) ? '是' : '否', calcDeposit(b), calcPayout(b), b.isPaid ? '已結帳' : '未結帳']);
         }));
         const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -203,6 +208,7 @@
               || (b.name && b.name.toLowerCase().includes(kw))
               || (b.phone && b.phone.includes(kw))
               || (b.category && b.category.toLowerCase().includes(kw))
+              || (b.location && b.location.toLowerCase().includes(kw))
               || (m.managerName && m.managerName.toLowerCase().includes(kw));
             const matchPaid = !unpaidOnly || !b.isPaid;
             return matchKw && matchPaid;
@@ -283,7 +289,7 @@
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="  搜尋姓名、電話、品類或負責人…"
+                  placeholder="  搜尋姓名、電話、品類、地點或負責人…"
                   className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -363,7 +369,7 @@
                                 <th className="pb-2 font-medium text-center">新增商家</th>
                                 <th className="pb-2 font-medium">獎金</th>
                                 <th className="pb-2 font-medium text-center">押金 20%</th>
-                                <th className="pb-2 font-medium text-center">實派 80%</th>
+                                <th className="pb-2 font-medium text-center">實派</th>
                                 <th className="pb-2 font-medium text-center">狀態</th>
                                 <th className="pb-2 font-medium text-center w-12"></th>
                               </tr>
@@ -397,10 +403,20 @@
                                     </div>
                                   </td>
                                   <td className="py-2.5 px-2 text-center">
-                                    <span className="text-sm text-amber-300 font-medium">${calcDeposit(bro.amount).toLocaleString()}</span>
+                                    <button
+                                      onClick={() => updateBro(manager.id, bro.id, 'deductDeposit', !shouldDeduct(bro))}
+                                      className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                                        shouldDeduct(bro)
+                                          ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40'
+                                          : 'bg-slate-800 text-slate-500 hover:bg-slate-700 border border-slate-700'
+                                      }`}
+                                      title={shouldDeduct(bro) ? '點擊取消扣押金' : '點擊啟用扣押金'}
+                                    >
+                                      {shouldDeduct(bro) ? `$${calcDeposit(bro).toLocaleString()}` : '不扣'}
+                                    </button>
                                   </td>
                                   <td className="py-2.5 px-2 text-center">
-                                    <span className="text-sm text-emerald-300 font-semibold">${calcPayout(bro.amount).toLocaleString()}</span>
+                                    <span className="text-sm text-emerald-300 font-semibold">${calcPayout(bro).toLocaleString()}</span>
                                   </td>
                                   <td className="py-2.5 text-center">
                                     <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
@@ -454,13 +470,24 @@
                                 </div>
                               </div>
                               <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
-                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-1.5 flex justify-between items-center">
-                                  <span className="text-amber-300">🔒 押金 20%</span>
-                                  <span className="text-amber-100 font-semibold">${calcDeposit(bro.amount).toLocaleString()}</span>
-                                </div>
+                                <button
+                                  onClick={() => updateBro(manager.id, bro.id, 'deductDeposit', !shouldDeduct(bro))}
+                                  className={`border rounded-md px-2 py-1.5 flex justify-between items-center transition-colors ${
+                                    shouldDeduct(bro)
+                                      ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20'
+                                      : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800'
+                                  }`}
+                                >
+                                  <span className={shouldDeduct(bro) ? 'text-amber-300' : 'text-slate-500'}>
+                                    🔒 {shouldDeduct(bro) ? '押金 20%' : '不扣押金'}
+                                  </span>
+                                  <span className={`font-semibold ${shouldDeduct(bro) ? 'text-amber-100' : 'text-slate-500'}`}>
+                                    ${calcDeposit(bro).toLocaleString()}
+                                  </span>
+                                </button>
                                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-md px-2 py-1.5 flex justify-between items-center">
-                                  <span className="text-emerald-300">💵 實派 80%</span>
-                                  <span className="text-emerald-100 font-semibold">${calcPayout(bro.amount).toLocaleString()}</span>
+                                  <span className="text-emerald-300">💵 實派</span>
+                                  <span className="text-emerald-100 font-semibold">${calcPayout(bro).toLocaleString()}</span>
                                 </div>
                               </div>
                               <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-900 border border-slate-700 text-slate-300'}`}>
