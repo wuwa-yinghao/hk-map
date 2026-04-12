@@ -18,27 +18,28 @@
   <div id="root"></div>
 
   <script type="text/babel">
+    const { useState, useMemo, useEffect, useRef } = React;
+
     // ==========================================
-    // ⚠️ 請在這裡貼上你的 Firebase Config ⚠️
+    // 你的專屬 Firebase 配置 (已更新)
     // ==========================================
     const firebaseConfig = {
-      apiKey: "你的_API_KEY",
-      authDomain: "你的_PROJECT_ID.firebaseapp.com",
-      projectId: "你的_PROJECT_ID",
-      storageBucket: "你的_PROJECT_ID.appspot.com",
-      messagingSenderId: "你的_SENDER_ID",
-      appId: "你的_APP_ID"
+      apiKey: "AIzaSyChJSl71yDiQ1f24KAavDyw_1ViWe-Gc1M",
+      authDomain: "hk-map-d0d52.firebaseapp.com",
+      databaseURL: "https://hk-map-d0d52-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "hk-map-d0d52",
+      storageBucket: "hk-map-d0d52.firebasestorage.app",
+      messagingSenderId: "713658993672",
+      appId: "1:713658993672:web:e73f4a62f327c5b0e9d5bd",
+      measurementId: "G-P371DX8BGQ"
     };
 
-    // 初始化 Firebase 與資料庫
+    // 初始化 Firebase
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
-    // 我們將所有數據存在 promoter_data 這個集合裡的 dashboard_v1 文件中
     const docRef = db.collection('promoter_data').doc('dashboard_v1');
-
-    const { useState, useMemo, useEffect, useRef } = React;
 
     function App() {
       const [managers, setManagers] = useState([]);
@@ -50,41 +51,33 @@
       const [confirmDelete, setConfirmDelete] = useState(null);
       
       const saveTimer = useRef(null);
-      const isRemoteUpdate = useRef(false); // 用來判斷是否為雲端推送的更新
+      const isRemoteUpdate = useRef(false);
 
-      // 1. 雲端即時監聽 (讀取資料)
+      // 監聽雲端資料
       useEffect(() => {
         const unsubscribe = docRef.onSnapshot((doc) => {
           if (doc.exists) {
-            // 標記這是來自雲端的更新，避免觸發本地的自動存檔造成無限迴圈
             isRemoteUpdate.current = true;
             setManagers(doc.data().managers || []);
           } else {
-            // 如果是全新專案，給予預設資料並上傳
             const defaultData = [{
               id: 'm1',
-              managerName: '陳大區',
-              bros: [
-                { id: 'b1', name: '阿偉', phone: '0912345678', orders: 0, amount: 0, isPaid: false }
-              ]
+              managerName: '新負責人',
+              bros: []
             }];
             setManagers(defaultData);
             docRef.set({ managers: defaultData });
           }
           setLoaded(true);
         }, (error) => {
-          console.error("讀取 Firebase 失敗:", error);
-          alert("無法連線到資料庫，請檢查 Firebase 設定或權限規則！");
+          console.error("Firebase Error:", error);
         });
-
-        return () => unsubscribe(); // 關閉網頁時取消監聽
+        return () => unsubscribe();
       }, []);
 
-      // 2. 本地修改自動上傳 (寫入資料)
+      // 自動同步到雲端
       useEffect(() => {
         if (!loaded) return;
-        
-        // 如果這次的改變是 Firebase 推送過來的，我們就不需要再上傳一次
         if (isRemoteUpdate.current) {
           isRemoteUpdate.current = false;
           return;
@@ -93,22 +86,17 @@
         setSaveState('saving');
         if (saveTimer.current) clearTimeout(saveTimer.current);
         
-        // 防抖動設計：停止操作 0.5 秒後才上傳，節省資料庫讀寫次數
         saveTimer.current = setTimeout(() => {
           docRef.set({ managers }).then(() => {
             setSaveState('saved');
             setTimeout(() => setSaveState('idle'), 1500);
-          }).catch(err => {
-            console.error("儲存失敗:", err);
-            setSaveState('idle');
-          });
-        }, 500);
+          }).catch(() => setSaveState('idle'));
+        }, 800);
 
         return () => saveTimer.current && clearTimeout(saveTimer.current);
       }, [managers, loaded]);
 
-      // --- 以下為數據計算與 UI 邏輯（維持不變） ---
-
+      // 計算邏輯
       const summary = useMemo(() => {
         let totalOrders = 0, totalAmount = 0, totalPaid = 0, paidCount = 0, broCount = 0;
         managers.forEach(m => m.bros.forEach(b => {
@@ -131,6 +119,7 @@
         return { orders, amount, paid, outstanding: amount - paid };
       };
 
+      // 操作函數
       const addManager = () => setManagers([...managers, { id: Date.now().toString(), managerName: '', bros: [] }]);
       const updateManagerName = (id, v) => setManagers(managers.map(m => m.id === id ? { ...m, managerName: v } : m));
       const deleteManager = (id) => setManagers(managers.filter(m => m.id !== id));
@@ -145,307 +134,104 @@
       const markTeamAllPaid = (mid) => setManagers(managers.map(m => m.id === mid
         ? { ...m, bros: m.bros.map(b => ({ ...b, isPaid: true })) } : m));
 
-      const exportCSV = () => {
-        const rows = [['負責人', '小老弟', '電話', '新增商家', '金額', '狀態']];
-        managers.forEach(m => m.bros.forEach(b => {
-          rows.push([m.managerName || '(未命名)', b.name, b.phone, b.orders, b.amount, b.isPaid ? '已結帳' : '未結帳']);
-        }));
-        const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `地推統計_${new Date().toISOString().slice(0, 10)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-      };
-
       const filteredManagers = useMemo(() => {
-        if (!search && !unpaidOnly) return managers;
         const kw = search.trim().toLowerCase();
         return managers.map(m => ({
           ...m,
           bros: m.bros.filter(b => {
-            const matchKw = !kw
-              || (b.name && b.name.toLowerCase().includes(kw))
-              || (b.phone && b.phone.includes(kw))
-              || (m.managerName && m.managerName.toLowerCase().includes(kw));
+            const matchKw = !kw || (b.name && b.name.toLowerCase().includes(kw)) || (b.phone && b.phone.includes(kw)) || (m.managerName && m.managerName.toLowerCase().includes(kw));
             const matchPaid = !unpaidOnly || !b.isPaid;
             return matchKw && matchPaid;
           })
         })).filter(m => m.bros.length > 0 || (!kw && !unpaidOnly));
       }, [managers, search, unpaidOnly]);
 
-      const today = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-
-      if (!loaded) {
-        return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">☁️ 正在連接雲端資料庫…</div>;
-      }
+      if (!loaded) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 font-bold">☁️ 正在連接雲端資料庫...</div>;
 
       return (
-        <div className="min-h-screen bg-slate-950 p-4 md:p-6 font-sans text-slate-200">
+        <div className="min-h-screen bg-slate-950 p-4 md:p-6 text-slate-200">
           <div className="max-w-7xl mx-auto">
-            {/* 頁首 */}
-            <header className="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-3">
+            <header className="flex justify-between items-end mb-6">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-100 flex items-center gap-2">
-                  ☁️ 雲端實時統計板
-                </h1>
-                <p className="text-sm text-slate-500 mt-1">{today}</p>
+                <h1 className="text-2xl font-bold text-white">☁️ 實時雲端看板</h1>
+                <p className="text-xs text-slate-500 mt-1">數據將在所有設備同步</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full transition-colors border ${
-                  saveState === 'saving' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
-                  saveState === 'saved' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
-                  'bg-blue-500/10 text-blue-300 border-blue-500/30'
-                }`}>
-                  {saveState === 'saving' ? <span>⏳ 同步至雲端…</span> :
-                   saveState === 'saved' ? <span>✅ 已同步</span> :
-                   <span>🌐 雲端連線中</span>}
-                </div>
-                <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 hover:bg-slate-700 transition-colors">
-                  📥 匯出 CSV
-                </button>
+              <div className={`text-xs px-3 py-1 rounded-full border ${saveState === 'saving' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : saveState === 'saved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
+                {saveState === 'saving' ? '⏳ 同步中...' : saveState === 'saved' ? '✅ 已同步' : '🌐 連線正常'}
               </div>
             </header>
 
-            {/* 總結卡 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-5">
-              <StatCard icon="📦" label="今日總新增" value={summary.totalOrders} suffix="家" tone="blue" />
-              <StatCard icon="💰" label="已結帳" value={`$${summary.totalPaid.toLocaleString()}`} tone="emerald" />
-            </div>
-
-            {/* 結帳進度 */}
-            <div className="bg-slate-900 rounded-xl p-4 md:p-5 border border-slate-800 mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-300">結帳進度</span>
-                <span className="text-sm text-slate-400">
-                  {summary.paidCount} / {summary.broCount} 人 · <span className="font-bold text-emerald-400">{summary.rate}%</span>
-                </span>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-xl">
+                <p className="text-xs text-blue-400">總新增單數</p>
+                <p className="text-2xl font-bold text-blue-100">{summary.totalOrders}</p>
               </div>
-              <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
-                  style={{ width: `${summary.rate}%` }}
-                />
+              <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl">
+                <p className="text-xs text-emerald-400">已結金額</p>
+                <p className="text-2xl font-bold text-emerald-100">${summary.totalPaid}</p>
               </div>
             </div>
 
-            {/* 搜尋和篩選 */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-5">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="  搜尋小老弟姓名、電話或負責人…"
-                  className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <button
-                onClick={() => setUnpaidOnly(!unpaidOnly)}
-                className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                  unpaidOnly ? 'bg-rose-500 text-white border-rose-500' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                🗂️ 只看未結帳
-              </button>
+            <div className="flex gap-2 mb-6">
+              <input type="text" placeholder="🔍 搜尋姓名或電話..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <button onClick={() => setUnpaidOnly(!unpaidOnly)} className={`px-4 py-2 rounded-lg text-sm border ${unpaidOnly ? 'bg-rose-500 text-white border-rose-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>未結</button>
             </div>
 
-            {/* 團隊列表 */}
             <div className="space-y-4">
-              {filteredManagers.length === 0 && (
-                <div className="bg-slate-900 rounded-xl p-12 text-center text-slate-500 border border-dashed border-slate-700">
-                  {search || unpaidOnly ? '沒有符合條件的紀錄' : '還沒有團隊，點下面按鈕建立吧'}
-                </div>
-              )}
-
-              {filteredManagers.map((manager) => {
+              {filteredManagers.map(manager => {
                 const stats = teamStats(manager.bros);
-                const isCollapsed = collapsed[manager.id];
                 return (
-                  <div key={manager.id} className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/60 p-3 md:p-4 border-b border-slate-800">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <button onClick={() => setCollapsed({ ...collapsed, [manager.id]: !isCollapsed })} className="text-slate-400 hover:text-white flex-shrink-0">
-                            {isCollapsed ? '🔽' : '🔼'}
-                          </button>
-                          <span className="text-slate-400 flex-shrink-0">👤</span>
-                          <input
-                            type="text"
-                            value={manager.managerName}
-                            onChange={(e) => updateManagerName(manager.id, e.target.value)}
-                            placeholder="負責人姓名"
-                            className="flex-1 min-w-0 px-3 py-1.5 rounded-md bg-slate-950/60 text-white placeholder-slate-500 font-semibold outline-none focus:ring-2 focus:ring-blue-500 border border-slate-700"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => markTeamAllPaid(manager.id)}
-                            disabled={manager.bros.length === 0 || manager.bros.every(b => b.isPaid)}
-                            className="text-xs px-2.5 py-1.5 bg-emerald-600 text-white rounded-md hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors"
-                          >
-                            全部標為已結
-                          </button>
-                          <button onClick={() => setConfirmDelete({ type: 'manager', managerId: manager.id })} className="text-xs px-2.5 py-1.5 text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors">
-                            🗑️ 刪除團隊
-                          </button>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                        <span>👥 {manager.bros.length} 人</span>
-                        <span>📦 {stats.orders} 家</span>
-                        <span>💰 ${stats.amount.toLocaleString()}</span>
-                        <span className="text-emerald-400">✅ 已結帳 ${stats.paid.toLocaleString()}</span>
-                        {stats.outstanding > 0 && <span className="text-rose-400">⏳ 未結帳 ${stats.outstanding.toLocaleString()}</span>}
-                      </div>
+                  <div key={manager.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                    <div className="bg-slate-800/50 p-3 flex justify-between items-center border-b border-slate-800">
+                      <input type="text" value={manager.managerName} onChange={e => updateManagerName(manager.id, e.target.value)} placeholder="負責人姓名" className="bg-transparent font-bold text-white focus:outline-none" />
+                      <button onClick={() => setConfirmDelete({type:'manager', mid:manager.id})} className="text-xs text-rose-400">🗑️ 刪除</button>
                     </div>
-
-                    {!isCollapsed && (
-                      <div className="p-3 md:p-4">
-                        {/* 桌面版表格 */}
-                        <div className="hidden md:block overflow-x-auto">
-                          <table className="w-full text-left">
-                            <thead>
-                              <tr className="border-b border-slate-800 text-slate-500 text-xs uppercase tracking-wider">
-                                <th className="pb-2 font-medium">姓名</th>
-                                <th className="pb-2 font-medium">電話</th>
-                                <th className="pb-2 font-medium text-center">新增商家</th>
-                                <th className="pb-2 font-medium">金額</th>
-                                <th className="pb-2 font-medium text-center">狀態</th>
-                                <th className="pb-2 font-medium text-center w-12"></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {manager.bros.map((bro) => (
-                                <tr key={bro.id} className={`border-b border-slate-800/60 transition-colors ${bro.isPaid ? 'bg-emerald-500/5' : 'hover:bg-slate-800/30'}`}>
-                                  <td className="py-2.5 pr-2">
-                                    <input type="text" value={bro.name} onChange={(e) => updateBro(manager.id, bro.id, 'name', e.target.value)} className="w-full px-2 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="姓名" />
-                                  </td>
-                                  <td className="py-2.5 pr-2">
-                                    <input type="tel" value={bro.phone} onChange={(e) => updateBro(manager.id, bro.id, 'phone', e.target.value)} className="w-full px-2 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="電話" />
-                                  </td>
-                                  <td className="py-2.5 px-2">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <button onClick={() => updateBro(manager.id, bro.id, 'orders', Math.max(0, bro.orders - 1))} className="w-7 h-7 flex items-center justify-center bg-rose-500/20 text-rose-300 rounded-md font-bold hover:bg-rose-500/30 transition-colors">➖</button>
-                                      <input type="number" min="0" value={bro.orders} onChange={(e) => updateBro(manager.id, bro.id, 'orders', parseInt(e.target.value) || 0)} className="w-14 text-center bg-slate-950 border border-slate-800 rounded-md py-1 font-bold text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                                      <button onClick={() => updateBro(manager.id, bro.id, 'orders', (Number(bro.orders) || 0) + 1)} className="w-7 h-7 flex items-center justify-center bg-blue-500/20 text-blue-300 rounded-md font-bold hover:bg-blue-500/30 transition-colors">➕</button>
-                                    </div>
-                                  </td>
-                                  <td className="py-2.5 pr-2">
-                                    <div className="relative">
-                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
-                                      <input type="number" min="0" value={bro.amount} onChange={(e) => updateBro(manager.id, bro.id, 'amount', parseFloat(e.target.value) || 0)} className="w-full pl-6 pr-2 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
-                                  </td>
-                                  <td className="py-2.5 text-center">
-                                    <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
-                                      {bro.isPaid ? '✅ 已結帳' : '未結帳'}
-                                    </button>
-                                  </td>
-                                  <td className="py-2.5 text-center">
-                                    <button onClick={() => setConfirmDelete({ type: 'bro', managerId: manager.id, broId: bro.id })} className="text-slate-500 hover:text-rose-400 transition-colors p-1">❌</button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* 手機版卡片 */}
-                        <div className="md:hidden space-y-3">
-                          {manager.bros.map((bro) => (
-                            <div key={bro.id} className={`p-3 rounded-lg border transition-colors ${bro.isPaid ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-950/50 border-slate-800'}`}>
-                              <div className="flex gap-2 mb-2">
-                                <input type="text" value={bro.name} onChange={(e) => updateBro(manager.id, bro.id, 'name', e.target.value)} className="flex-1 px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-slate-200 placeholder-slate-500" placeholder="姓名" />
-                                <button onClick={() => setConfirmDelete({ type: 'bro', managerId: manager.id, broId: bro.id })} className="text-slate-500 hover:text-rose-400 p-1.5">❌</button>
+                    <div className="p-3">
+                      <div className="space-y-3">
+                        {manager.bros.map(bro => (
+                          <div key={bro.id} className={`p-3 rounded-lg border ${bro.isPaid ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-slate-950/50 border-slate-800'}`}>
+                            <div className="flex gap-2 mb-2">
+                              <input type="text" value={bro.name} onChange={e => updateBro(manager.id, bro.id, 'name', e.target.value)} placeholder="小老弟" className="flex-1 bg-slate-800 border-none rounded px-2 py-1 text-sm" />
+                              <button onClick={() => setConfirmDelete({type:'bro', mid:manager.id, bid:bro.id})} className="text-slate-600">❌</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex items-center justify-between bg-slate-800 rounded px-2">
+                                <button onClick={() => updateBro(manager.id, bro.id, 'orders', Math.max(0, bro.orders-1))} className="text-rose-400 p-1">➖</button>
+                                <span className="font-bold text-sm">{bro.orders}</span>
+                                <button onClick={() => updateBro(manager.id, bro.id, 'orders', (bro.orders||0)+1)} className="text-blue-400 p-1">➕</button>
                               </div>
-                              <div className="flex items-center gap-1 mb-2">
-                                <span>📱</span>
-                                <input type="tel" value={bro.phone} onChange={(e) => updateBro(manager.id, bro.id, 'phone', e.target.value)} className="flex-1 px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-slate-200 placeholder-slate-500" placeholder="電話" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 mb-2">
-                                <div>
-                                  <label className="text-xs text-slate-500 mb-1 block">新增商家</label>
-                                  <div className="flex items-center gap-1">
-                                    <button onClick={() => updateBro(manager.id, bro.id, 'orders', Math.max(0, bro.orders - 1))} className="w-8 h-8 flex items-center justify-center bg-rose-500/20 text-rose-300 rounded-md">➖</button>
-                                    <input type="number" min="0" value={bro.orders} onChange={(e) => updateBro(manager.id, bro.id, 'orders', parseInt(e.target.value) || 0)} className="flex-1 text-center bg-slate-900 border border-slate-700 rounded-md py-1.5 font-bold text-sm text-slate-200" />
-                                    <button onClick={() => updateBro(manager.id, bro.id, 'orders', (Number(bro.orders) || 0) + 1)} className="w-8 h-8 flex items-center justify-center bg-blue-500/20 text-blue-300 rounded-md">➕</button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="text-xs text-slate-500 mb-1 block">金額</label>
-                                  <div className="relative">
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
-                                    <input type="number" min="0" value={bro.amount} onChange={(e) => updateBro(manager.id, bro.id, 'amount', parseFloat(e.target.value) || 0)} className="w-full pl-6 pr-2 py-1.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-slate-200" />
-                                  </div>
-                                </div>
-                              </div>
-                              <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-900 border border-slate-700 text-slate-300'}`}>
-                                {bro.isPaid ? '✅ 已結帳' : '點一下標記為已結帳'}
+                              <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`text-xs font-bold rounded ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                {bro.isPaid ? '✅ 已結帳' : '未結帳'}
                               </button>
                             </div>
-                          ))}
-                        </div>
-
-                        <button onClick={() => addBro(manager.id)} className="mt-4 w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-500/10 text-blue-300 rounded-lg hover:bg-blue-500/20 font-medium text-sm transition-colors border border-dashed border-blue-500/40">
-                          ➕ 新增小老弟至 {manager.managerName || '此團隊'}
-                        </button>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                      <button onClick={() => addBro(manager.id)} className="w-full mt-3 py-2 border border-dashed border-slate-700 rounded-lg text-xs text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors">➕ 新增小老弟</button>
+                    </div>
                   </div>
                 );
               })}
             </div>
 
-            <div className="mt-6 flex justify-center">
-              <button onClick={addManager} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-500 font-semibold transition-all">
-                ➕ 建立新大區團隊
-              </button>
-            </div>
+            <button onClick={addManager} className="w-full mt-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg transition-colors">➕ 建立新大區團隊</button>
+          </div>
 
-            {confirmDelete && (
-              <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setConfirmDelete(null)}>
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="font-bold text-lg text-slate-100 mb-2">確認刪除？</h3>
-                  <p className="text-sm text-slate-400 mb-4">
-                    {confirmDelete.type === 'manager' ? '刪除之後，這個團隊和所有小老弟的資料都會消失，無法還原。' : '點擊「確認」後，這個小老弟的資料就會消失。'}
-                  </p>
-                  <div className="flex gap-2 justify-end">
-                    <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded-lg">取消</button>
-                    <button
-                      onClick={() => {
-                        if (confirmDelete.type === 'manager') deleteManager(confirmDelete.managerId);
-                        else deleteBro(confirmDelete.managerId, confirmDelete.broId);
-                        setConfirmDelete(null);
-                      }}
-                      className="px-4 py-2 text-sm bg-rose-500 text-white rounded-lg hover:bg-rose-600 font-medium"
-                    >確認刪除</button>
-                  </div>
+          {confirmDelete && (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-xs w-full">
+                <p className="text-white font-bold mb-4 text-center">確定要刪除嗎？</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-slate-800 rounded-lg">取消</button>
+                  <button onClick={() => {
+                    if(confirmDelete.type==='manager') deleteManager(confirmDelete.mid);
+                    else deleteBro(confirmDelete.mid, confirmDelete.bid);
+                    setConfirmDelete(null);
+                  }} className="flex-1 py-2 bg-rose-500 text-white rounded-lg">確認</button>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    function StatCard({ icon, label, value, suffix, tone }) {
-      const tones = {
-        blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: 'text-blue-400', text: 'text-blue-100' },
-        emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: 'text-emerald-400', text: 'text-emerald-100' },
-      };
-      const t = tones[tone];
-      return (
-        <div className={`${t.bg} ${t.border} border p-4 md:p-5 rounded-xl`}>
-          <div className={`flex items-center gap-1.5 text-xs md:text-sm ${t.icon} mb-1`}>
-            <span>{icon}</span><span>{label}</span>
-          </div>
-          <div className={`text-2xl md:text-3xl font-bold ${t.text}`}>
-            {value}{suffix && <span className="text-base md:text-lg ml-1 opacity-70">{suffix}</span>}
-          </div>
+            </div>
+          )}
         </div>
       );
     }
