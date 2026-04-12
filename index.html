@@ -3,20 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>地推團隊即時統計板</title>
+  <title>地推團隊雲端即時統計板</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-200">
   <div id="root"></div>
 
   <script type="text/babel">
+    // ==========================================
+    // ⚠️ 請在這裡貼上你的 Firebase Config ⚠️
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "你的_API_KEY",
+      authDomain: "你的_PROJECT_ID.firebaseapp.com",
+      projectId: "你的_PROJECT_ID",
+      storageBucket: "你的_PROJECT_ID.appspot.com",
+      messagingSenderId: "你的_SENDER_ID",
+      appId: "你的_APP_ID"
+    };
+
+    // 初始化 Firebase 與資料庫
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    // 我們將所有數據存在 promoter_data 這個集合裡的 dashboard_v1 文件中
+    const docRef = db.collection('promoter_data').doc('dashboard_v1');
+
     const { useState, useMemo, useEffect, useRef } = React;
-    const STORAGE_KEY = 'promoter-dashboard-v1';
 
     function App() {
       const [managers, setManagers] = useState([]);
@@ -26,46 +48,66 @@
       const [unpaidOnly, setUnpaidOnly] = useState(false);
       const [collapsed, setCollapsed] = useState({});
       const [confirmDelete, setConfirmDelete] = useState(null);
+      
       const saveTimer = useRef(null);
+      const isRemoteUpdate = useRef(false); // 用來判斷是否為雲端推送的更新
 
-      // 讀取資料
+      // 1. 雲端即時監聽 (讀取資料)
       useEffect(() => {
-        try {
-          const savedData = localStorage.getItem(STORAGE_KEY);
-          if (savedData) {
-            setManagers(JSON.parse(savedData));
+        const unsubscribe = docRef.onSnapshot((doc) => {
+          if (doc.exists) {
+            // 標記這是來自雲端的更新，避免觸發本地的自動存檔造成無限迴圈
+            isRemoteUpdate.current = true;
+            setManagers(doc.data().managers || []);
           } else {
-            setManagers([{
+            // 如果是全新專案，給予預設資料並上傳
+            const defaultData = [{
               id: 'm1',
               managerName: '陳大區',
               bros: [
-                { id: 'b1', name: '阿偉', phone: '0912345678', orders: 15, amount: 1500, isPaid: false },
-                { id: 'b2', name: '小明', phone: '0987654321', orders: 8, amount: 800, isPaid: true }
+                { id: 'b1', name: '阿偉', phone: '0912345678', orders: 0, amount: 0, isPaid: false }
               ]
-            }]);
+            }];
+            setManagers(defaultData);
+            docRef.set({ managers: defaultData });
           }
-        } catch {
-          setManagers([]);
-        }
-        setLoaded(true);
+          setLoaded(true);
+        }, (error) => {
+          console.error("讀取 Firebase 失敗:", error);
+          alert("無法連線到資料庫，請檢查 Firebase 設定或權限規則！");
+        });
+
+        return () => unsubscribe(); // 關閉網頁時取消監聽
       }, []);
 
-      // 自動存檔
+      // 2. 本地修改自動上傳 (寫入資料)
       useEffect(() => {
         if (!loaded) return;
+        
+        // 如果這次的改變是 Firebase 推送過來的，我們就不需要再上傳一次
+        if (isRemoteUpdate.current) {
+          isRemoteUpdate.current = false;
+          return;
+        }
+
         setSaveState('saving');
         if (saveTimer.current) clearTimeout(saveTimer.current);
+        
+        // 防抖動設計：停止操作 0.5 秒後才上傳，節省資料庫讀寫次數
         saveTimer.current = setTimeout(() => {
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(managers));
+          docRef.set({ managers }).then(() => {
             setSaveState('saved');
-            setTimeout(() => setSaveState('idle'), 1200);
-          } catch {
+            setTimeout(() => setSaveState('idle'), 1500);
+          }).catch(err => {
+            console.error("儲存失敗:", err);
             setSaveState('idle');
-          }
+          });
         }, 500);
+
         return () => saveTimer.current && clearTimeout(saveTimer.current);
       }, [managers, loaded]);
+
+      // --- 以下為數據計算與 UI 邏輯（維持不變） ---
 
       const summary = useMemo(() => {
         let totalOrders = 0, totalAmount = 0, totalPaid = 0, paidCount = 0, broCount = 0;
@@ -137,7 +179,7 @@
       const today = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
       if (!loaded) {
-        return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">載入中…</div>;
+        return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">☁️ 正在連接雲端資料庫…</div>;
       }
 
       return (
@@ -147,7 +189,7 @@
             <header className="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-3">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-100 flex items-center gap-2">
-                  📈 地推團隊即時看板
+                  ☁️ 雲端實時統計板
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">{today}</p>
               </div>
@@ -155,11 +197,11 @@
                 <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full transition-colors border ${
                   saveState === 'saving' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
                   saveState === 'saved' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
-                  'bg-slate-800/50 text-slate-400 border-slate-700'
+                  'bg-blue-500/10 text-blue-300 border-blue-500/30'
                 }`}>
-                  {saveState === 'saving' ? <span>⏳ 儲存中…</span> :
-                   saveState === 'saved' ? <span>✅ 已儲存</span> :
-                   <span>💾 自動儲存</span>}
+                  {saveState === 'saving' ? <span>⏳ 同步至雲端…</span> :
+                   saveState === 'saved' ? <span>✅ 已同步</span> :
+                   <span>🌐 雲端連線中</span>}
                 </div>
                 <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 hover:bg-slate-700 transition-colors">
                   📥 匯出 CSV
