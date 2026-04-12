@@ -1,476 +1,217 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>香港地推路名地圖 - 專業中文化版</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
-<style>
-/* 滿版核心設定 */
-html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; }
-body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-serif; background: #0d1117; color: #e0e0e0; }
-.container { width: 100%; height: 100vh; display: flex; flex-direction: column; }
+import React, { useState, useMemo } from 'react';
 
-.title-bar { background: #0f2940; color: #fff; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 1000; }
-.title-bar h1 { font-size: 18px; font-weight: 600; }
-.title-bar span { font-size: 12px; opacity: 0.6; }
+export default function PromoterDashboard() {
+  // 初始資料結構：大區包含負責人，以及他旗下的小老弟們
+  const [managers, setManagers] = useState([
+    {
+      id: 'm1',
+      managerName: '陳大區',
+      bros: [
+        { id: 'b1', name: '阿偉', phone: '0912345678', orders: 15, amount: 1500, isPaid: false },
+        { id: 'b2', name: '小明', phone: '0987654321', orders: 8, amount: 800, isPaid: true }
+      ]
+    }
+  ]);
 
-/* 地圖容器 */
-.map-wrap { position: relative; flex-grow: 1; width: 100%; background: #0d1117; z-index: 1; display: flex; flex-direction: column; }
-#map { flex-grow: 1; width: 100%; z-index: 1; }
+  // 自動計算上方總看板的數據
+  const summary = useMemo(() => {
+    let totalOrders = 0;
+    let totalAmount = 0;
+    let totalPaid = 0;
 
-/* 🌟 底圖黑夜模式濾鏡 (將普通中文地圖轉換為超帥的黑夜模式) */
-.dark-tiles {
-  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%) saturate(120%);
-}
-
-/* 🌟 分區中央的中文名稱標籤 */
-.district-label-tooltip {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: rgba(255, 255, 255, 0.8) !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  text-shadow: 0 0 6px #000, 0 0 10px #000 !important;
-  pointer-events: none !important;
-}
-.leaflet-tooltip-top::before, .leaflet-tooltip-bottom::before, .leaflet-tooltip-left::before, .leaflet-tooltip-right::before {
-  display: none !important; /* 隱藏小箭頭 */
-}
-
-/* 搜尋列樣式 */
-.search-box {
-  position: absolute; top: 16px; right: 16px; z-index: 1000;
-  display: flex; gap: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  border-radius: 8px;
-}
-.search-box input {
-  padding: 10px 14px; border-radius: 8px; border: 1px solid #2d3a4e;
-  background: rgba(28, 35, 51, 0.95); color: #fff; outline: none; font-size: 13px; width: 220px;
-  backdrop-filter: blur(8px);
-}
-.search-box input::placeholder { color: #6a8099; }
-.search-box button {
-  padding: 10px 14px; border-radius: 8px; border: none; background: #4a90d9;
-  color: white; cursor: pointer; font-weight: bold; transition: background 0.2s;
-}
-.search-box button:hover { background: #357abd; }
-
-.info-panel {
-  position: absolute; bottom: 20px; left: 16px; right: 16px;
-  background: rgba(28, 35, 51, 0.96); border: 1px solid #2d3a4e; border-radius: 12px;
-  padding: 16px 20px; display: none; z-index: 1001;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5); backdrop-filter: blur(10px);
-  max-height: 75vh; overflow-y: auto;
-}
-.info-panel.show { display: block; }
-.info-panel .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 24px; color: #888; padding: 4px;}
-
-.info-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.info-badge { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; flex-shrink: 0;}
-.info-title { font-size: 17px; font-weight: 600; color: #fff; }
-.info-details { display: grid; grid-template-columns: 50px 1fr; gap: 10px 16px; font-size: 13px; align-items: start; }
-.info-details dt { color: #6a8099; padding-top: 2px; }
-.info-details dd { color: #b8c8d8; font-weight: 500; margin: 0; }
-
-.runner-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
-.runner-item { background: rgba(255,255,255,0.04); padding: 8px 10px; border-radius: 6px; border: 1px solid #2d3a4e; }
-.runner-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.runner-name { font-weight: 600; color: #4a90d9; font-size: 14px; }
-.runner-actions button { background: none; border: none; color: #7f8c8d; cursor: pointer; font-size: 11px; margin-left: 8px; transition: color 0.2s;}
-.runner-actions button:hover { color: #fff; }
-.runner-roads { font-size: 12px; color: #95a5a6; line-height: 1.4; }
-
-.legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 20px; border-top: 1px solid #1e2a3a; flex-shrink: 0; background: #161b22; z-index: 1000; }
-.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #6a8099; }
-.legend-item span:first-child { width: 12px; height: 12px; border-radius: 2px; }
-
-.toggle-row { display: flex; gap: 6px; padding: 10px 20px; border-bottom: 1px solid #1e2a3a; flex-wrap: wrap; align-items: center; flex-shrink: 0; background: #161b22; z-index: 1000; }
-.toggle-btn { font-size: 11px; padding: 6px 10px; border-radius: 6px; border: 1px solid #2d3a4e; background: transparent; color: #7f8c8d; cursor: pointer; }
-.toggle-btn.on { background: #1a4a2e; color: #2ecc71; border-color: #1a4a2e; }
-.edit-btn { padding: 4px 10px; font-size: 11px; background: #2d3a4e; color: #b8c8d8; border: 1px solid #4a6070; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
-.edit-btn:hover { background: #4a90d9; color: #fff; border-color: #4a90d9; }
-
-/* 🌟 修改：出勤路線螢光特效 (取消閃爍，改為常亮) */
-.neon-road {
-  filter: drop-shadow(0 0 3px #00e5ff) drop-shadow(0 0 8px #00e5ff);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-@media (max-width: 600px) {
-  .info-panel { bottom: 0; left: 0; right: 0; border-radius: 16px 16px 0 0; padding: 20px 20px 30px 20px; border: none; max-height: 85vh; }
-  .search-box { top: 12px; left: 12px; right: 12px; }
-  .search-box input { width: 100%; flex-grow: 1; }
-}
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="title-bar">
-    <h1>香港地推路名地圖</h1>
-    <span id="sync-status">數據同步中...</span>
-  </div>
-  <div class="toggle-row" id="toggleRow"></div>
-  <div class="map-wrap">
-    
-    <div class="search-box">
-      <input type="text" id="search-input" placeholder="支援中文/簡體搜尋地址 (如: 弥敦道)" onkeypress="if(event.key==='Enter') searchAddress();" />
-      <button id="search-btn" onclick="searchAddress()">搜尋</button>
-    </div>
-
-    <div id="map"></div>
-    <div class="info-panel" id="panel">
-      <span class="close" onclick="closePanel()">&times;</span>
-      <div class="info-header">
-        <div class="info-badge" id="p-badge"></div>
-        <div><div class="info-title" id="p-title"></div></div>
-      </div>
-      <div class="info-details">
-        <dt>大區主管</dt>
-        <dd style="display:flex;align-items:center;">
-          <span id="p-person" style="margin-right: 8px;"></span>
-          <button class="edit-btn" id="edit-person-btn">修改</button>
-        </dd>
-        <dt>大區備註</dt>
-        <dd style="display:flex;align-items:center;">
-          <span id="p-note" style="margin-right: 8px;"></span>
-          <button class="edit-btn" id="edit-note-btn">修改</button>
-        </dd>
-        <dt style="margin-top: 8px; color: #e67e22; font-weight:bold;">跑腿團隊</dt>
-        <dd style="margin-top: 8px;">
-          <div id="p-runners-list" class="runner-list"></div>
-          <button class="edit-btn" id="add-runner-btn" style="margin-top:4px;">+ 新增跑腿與路線</button>
-        </dd>
-      </div>
-    </div>
-  </div>
-  <div class="legend">
-    <div class="legend-item"><span style="background:transparent; border: 2px solid #3a4b66;"></span><span>分區邊界</span></div>
-    <div class="legend-item">
-      <span style="background:#00e5ff; box-shadow: 0 0 8px #00e5ff; border-radius: 50%; height: 4px; width: 14px; margin-top:2px;"></span>
-      <span style="color:#00e5ff; font-weight:bold;">出勤中街道</span>
-    </div>
-  </div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyChJSl71yDiQ1f24KAavDyw_1ViWe-Gc1M",
-  authDomain: "hk-map-d0d52.firebaseapp.com",
-  databaseURL: "https://hk-map-d0d52-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "hk-map-d0d52",
-  storageBucket: "hk-map-d0d52.firebasestorage.app",
-  messagingSenderId: "713658993672",
-  appId: "1:713658993672:web:e73f4a62f327c5b0e9d5bd"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-let curActive = null;
-window.zones = {};
-
-const hkBounds = L.latLngBounds(L.latLng(22.13, 113.82), L.latLng(22.58, 114.45));
-const map = L.map('map', { 
-  zoomControl: false, maxBounds: hkBounds, maxBoundsViscosity: 1.0, minZoom: 10, maxZoom: 18                    
-}).setView([22.35, 114.18], 11);
-
-// 🌟 將底圖換成了 Google Maps 的繁體中文版，並套用強大的黑夜 CSS 濾鏡
-L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=zh-HK', { 
-  attribution: '&copy; Google Maps',
-  className: 'dark-tiles'
-}).addTo(map);
-
-map.createPane('neonPane');
-map.getPane('neonPane').style.zIndex = 450;
-let roadLayerGroup = L.layerGroup().addTo(map);
-let geoLayer = null;
-
-const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'hk' }) : (text) => text;
-
-fetch("https://cdn.jsdelivr.net/npm/datamaps@0.5.10/src/js/data/hkg.topo.json")
-  .then(res => res.json())
-  .then(topoData => {
-    const key = Object.keys(topoData.objects)[0];
-    const geojson = topojson.feature(topoData, topoData.objects[key]);
-    
-    onValue(ref(db, 'zones'), (snapshot) => {
-      window.zones = snapshot.val();
-      document.getElementById('sync-status').textContent = "數據已同步";
-      renderMap(geojson);
-      buildToggles();
-      updateGlowingRoads(); 
-      if(curActive && window.zones[curActive]) showPanel(window.zones[curActive]);
+    managers.forEach(manager => {
+      manager.bros.forEach(bro => {
+        totalOrders += Number(bro.orders) || 0;
+        totalAmount += Number(bro.amount) || 0;
+        if (bro.isPaid) {
+          totalPaid += Number(bro.amount) || 0;
+        }
+      });
     });
-  });
 
-function renderMap(geojson) {
-  if (geoLayer) map.removeLayer(geoLayer);
-  geoLayer = L.geoJSON(geojson, {
-    style: (feature) => {
-      // 🌟 將所有地區的色塊移除，只保留低調乾淨的邊界線
-      return { 
-        fillColor: '#1c2333', 
-        weight: 1.5, 
-        opacity: 0.8, 
-        color: '#3a4b66', 
-        fillOpacity: 0.05 
-      };
-    },
-    onEachFeature: (feature, layer) => {
-      const name = feature.properties.name || feature.id;
-      const z = window.zones[name];
-      
-      // 🌟 新增：在每個分區的中心點標示「中文區域名稱」
-      if(z) {
-        const displayName = z.area.split('+')[0].split('—')[0].trim();
-        layer.bindTooltip(displayName, {
-          permanent: true,
-          direction: 'center',
-          className: 'district-label-tooltip'
-        });
+    return { totalOrders, totalAmount, totalPaid };
+  }, [managers]);
+
+  // --- 操作邏輯函數 ---
+
+  // 新增負責人
+  const addManager = () => {
+    setManagers([...managers, { id: Date.now().toString(), managerName: '', bros: [] }]);
+  };
+
+  // 更新負責人姓名
+  const updateManagerName = (managerId, newName) => {
+    setManagers(managers.map(m => m.id === managerId ? { ...m, managerName: newName } : m));
+  };
+
+  // 刪除負責人
+  const deleteManager = (managerId) => {
+    setManagers(managers.filter(m => m.id !== managerId));
+  };
+
+  // 新增小老弟
+  const addBro = (managerId) => {
+    setManagers(managers.map(m => {
+      if (m.id === managerId) {
+        return {
+          ...m,
+          bros: [...m.bros, { id: Date.now().toString(), name: '', phone: '', orders: 0, amount: 0, isPaid: false }]
+        };
       }
+      return m;
+    }));
+  };
 
-      layer.on('click', (e) => {
-        curActive = name;
-        showPanel(window.zones[curActive]);
-        L.DomEvent.stopPropagation(e);
-      });
-    }
-  }).addTo(map);
-}
+  // 更新小老弟資料
+  const updateBro = (managerId, broId, field, value) => {
+    setManagers(managers.map(m => {
+      if (m.id === managerId) {
+        return {
+          ...m,
+          bros: m.bros.map(b => b.id === broId ? { ...b, [field]: value } : b)
+        };
+      }
+      return m;
+    }));
+  };
 
-let lastRoadString = "";
-function updateGlowingRoads() {
-  let allRoads = new Set();
-  
-  Object.values(window.zones).forEach(z => {
-    if(z.on && z.runners) {
-      z.runners.forEach(r => {
-        if(r.roads) {
-          r.roads.split(/[,，、]/).forEach(road => {
-            let clean = road.trim();
-            if(clean.length >= 2) allRoads.add(converter(clean)); 
-          });
-        }
-      });
-    }
-  });
+  // 刪除小老弟
+  const deleteBro = (managerId, broId) => {
+    setManagers(managers.map(m => {
+      if (m.id === managerId) {
+        return { ...m, bros: m.bros.filter(b => b.id !== broId) };
+      }
+      return m;
+    }));
+  };
 
-  const currentRoadString = Array.from(allRoads).sort().join("|");
-  if(currentRoadString === lastRoadString) return; 
-  lastRoadString = currentRoadString;
-  
-  roadLayerGroup.clearLayers();
-  if(allRoads.size === 0) return;
+  return (
+    <div className="min-h-screen bg-gray-100 p-6 font-sans">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">📊 地推團隊即時統計板</h1>
 
-  const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const roadRegex = Array.from(allRoads).map(escapeRegExp).join("|");
-  const query = `[out:json][timeout:15];way["name"~"${roadRegex}"](22.13,113.82,22.58,114.45);out geom;`;
-  
-  fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
-  .then(res => res.json())
-  .then(data => {
-    if(data && data.elements) {
-      data.elements.forEach(el => {
-        if(el.type === 'way' && el.geometry && el.tags && el.tags.name) {
-          const nameMatches = Array.from(allRoads).some(r => el.tags.name.includes(r));
-          if(nameMatches) {
-            const latlngs = el.geometry.map(pt => [pt.lat, pt.lon]);
-            // 🌟 畫出螢光路線 (常亮)
-            L.polyline(latlngs, {
-              color: '#00e5ff',
-              weight: 4,
-              opacity: 1.0,
-              className: 'neon-road',
-              pane: 'neonPane'
-            }).addTo(roadLayerGroup)
-              .bindPopup(`<b style="color:#00e5ff;">🟢 佔領中路段：</b><br>${el.tags.name}`);
-          }
-        }
-      });
-    }
-  }).catch(err => console.log("高亮路線加載失敗", err));
-}
-
-window.showPanel = function(z) {
-  if(!z) return;
-  const p = document.getElementById("panel");
-  p.classList.add("show");
-  document.getElementById("p-badge").style.background = "#2471a3"; // 統一顯示深藍徽章
-  document.getElementById("p-badge").textContent = z.id;
-  document.getElementById("p-title").textContent = z.area;
-  document.getElementById("p-person").textContent = z.person;
-  document.getElementById("p-note").textContent = z.note || "—";
-  
-  const runnersList = document.getElementById("p-runners-list");
-  runnersList.innerHTML = "";
-  const runners = z.runners || [];
-  
-  if (runners.length === 0) {
-    runnersList.innerHTML = '<span style="color:#7f8c8d;font-size:12px;">尚未指派跑腿</span>';
-  } else {
-    runners.forEach((r, idx) => {
-      const div = document.createElement("div");
-      div.className = "runner-item";
-      div.innerHTML = `
-        <div class="runner-header">
-          <span class="runner-name">${r.name}</span>
-          <div class="runner-actions">
-            <button onclick="editRunner(${idx})">編輯</button>
-            <button onclick="deleteRunner(${idx})">刪除</button>
-          </div>
+      {/* 頂部總結看板 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-blue-500 text-white p-6 rounded-xl shadow-lg flex flex-col items-center">
+          <span className="text-lg opacity-80">今日總單數</span>
+          <span className="text-4xl font-bold mt-2">{summary.totalOrders} 單</span>
         </div>
-        <div class="runner-roads">負責路段：${r.roads || "未填寫"}</div>
-      `;
-      runnersList.appendChild(div);
-    });
-  }
-};
+        <div className="bg-yellow-500 text-white p-6 rounded-xl shadow-lg flex flex-col items-center">
+          <span className="text-lg opacity-80">應收總金額</span>
+          <span className="text-4xl font-bold mt-2">${summary.totalAmount}</span>
+        </div>
+        <div className="bg-green-500 text-white p-6 rounded-xl shadow-lg flex flex-col items-center">
+          <span className="text-lg opacity-80">已結帳金額</span>
+          <span className="text-4xl font-bold mt-2">${summary.totalPaid}</span>
+        </div>
+      </div>
 
-window.closePanel = function() {
-  document.getElementById("panel").classList.remove("show");
-  curActive = null;
-};
+      {/* 負責人與小老弟列表區塊 */}
+      <div className="space-y-6">
+        {managers.map((manager) => (
+          <div key={manager.id} className="bg-white rounded-xl shadow-md overflow-hidden">
+            {/* 負責人表頭 */}
+            <div className="bg-gray-800 p-4 flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <span className="text-white text-lg">👤 負責人：</span>
+                <input
+                  type="text"
+                  value={manager.managerName}
+                  onChange={(e) => updateManagerName(manager.id, e.target.value)}
+                  placeholder="輸入負責人姓名"
+                  className="px-3 py-1 rounded text-gray-900 font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button onClick={() => deleteManager(manager.id)} className="text-red-400 hover:text-red-300 text-sm">
+                刪除此團隊
+              </button>
+            </div>
 
-function buildToggles() {
-  const row = document.getElementById("toggleRow");
-  row.innerHTML = "";
-  const seen = new Set();
-  Object.entries(window.zones).forEach(([name, z]) => {
-    if (seen.has(z.id)) return;
-    seen.add(z.id);
-    const b = document.createElement("button");
-    b.className = "toggle-btn" + (z.on ? " on" : "");
-    b.textContent = z.person;
-    b.onclick = () => {
-      const ns = !z.on;
-      const updates = {};
-      Object.entries(window.zones).forEach(([key, val]) => {
-        if(val.id === z.id) updates['zones/' + key + '/on'] = ns;
-      });
-      update(ref(db), updates);
-    };
-    row.appendChild(b);
-  });
+            {/* 小老弟清單 */}
+            <div className="p-4 overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="border-b text-gray-500 text-sm">
+                    <th className="pb-2 w-1/6">👦 小老弟姓名</th>
+                    <th className="pb-2 w-1/6">📱 聯絡電話</th>
+                    <th className="pb-2 w-1/5 text-center">📦 業績單數</th>
+                    <th className="pb-2 w-1/6">💰 結帳金額</th>
+                    <th className="pb-2 w-1/6 text-center">✅ 狀態</th>
+                    <th className="pb-2 w-1/12 text-center">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {manager.bros.map((bro) => (
+                    <tr key={bro.id} className={`border-b transition-colors ${bro.isPaid ? 'bg-green-50' : 'hover:bg-gray-50'}`}>
+                      <td className="py-3 pr-2">
+                        <input type="text" value={bro.name} onChange={(e) => updateBro(manager.id, bro.id, 'name', e.target.value)} className="w-full px-2 py-1 border rounded" placeholder="姓名" />
+                      </td>
+                      <td className="py-3 pr-2">
+                        <input type="text" value={bro.phone} onChange={(e) => updateBro(manager.id, bro.id, 'phone', e.target.value)} className="w-full px-2 py-1 border rounded" placeholder="電話" />
+                      </td>
+                      
+                      {/* 單數加減號按鈕區 */}
+                      <td className="py-3 px-2 flex items-center justify-center space-x-2">
+                        <button 
+                          onClick={() => updateBro(manager.id, bro.id, 'orders', Math.max(0, bro.orders - 1))}
+                          className="w-8 h-8 bg-red-100 text-red-600 rounded-full font-bold hover:bg-red-200"
+                        >-</button>
+                        <input 
+                          type="number" 
+                          value={bro.orders} 
+                          onChange={(e) => updateBro(manager.id, bro.id, 'orders', parseInt(e.target.value) || 0)}
+                          className="w-16 text-center border rounded py-1 font-bold"
+                        />
+                        <button 
+                          onClick={() => updateBro(manager.id, bro.id, 'orders', bro.orders + 1)}
+                          className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-bold hover:bg-blue-200"
+                        >+</button>
+                      </td>
+
+                      <td className="py-3 pr-2">
+                        <div className="flex items-center">
+                          <span className="mr-1 text-gray-500">$</span>
+                          <input type="number" value={bro.amount} onChange={(e) => updateBro(manager.id, bro.id, 'amount', e.target.value)} className="w-full px-2 py-1 border rounded" />
+                        </div>
+                      </td>
+                      <td className="py-3 text-center">
+                        <button 
+                          onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)}
+                          className={`px-4 py-1 rounded-full text-sm font-bold transition-colors ${bro.isPaid ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
+                        >
+                          {bro.isPaid ? '已結帳' : '未結帳'}
+                        </button>
+                      </td>
+                      <td className="py-3 text-center">
+                        <button onClick={() => deleteBro(manager.id, bro.id)} className="text-red-500 hover:text-red-700 font-bold">✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* 新增小老弟按鈕 */}
+              <div className="mt-4 flex justify-center">
+                <button 
+                  onClick={() => addBro(manager.id)}
+                  className="flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium transition-colors"
+                >
+                  ➕ 新增小老弟至 {manager.managerName || '此團隊'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 底部新增負責人按鈕 */}
+      <div className="mt-8 flex justify-center">
+        <button 
+          onClick={addManager}
+          className="px-6 py-3 bg-gray-800 text-white rounded-xl shadow-lg hover:bg-gray-700 font-bold text-lg transition-transform hover:scale-105"
+        >
+          ＋ 建立新大區團隊
+        </button>
+      </div>
+    </div>
+  );
 }
-
-document.getElementById("edit-person-btn").onclick = () => {
-  if (!curActive) return;
-  const newPerson = prompt("請輸入該區「主管/負責人」名稱：", window.zones[curActive].person);
-  if (newPerson) {
-    const updates = {};
-    const targetId = window.zones[curActive].id;
-    Object.entries(window.zones).forEach(([key, val]) => {
-      if(val.id === targetId) updates['zones/' + key + '/person'] = newPerson.trim();
-    });
-    update(ref(db), updates);
-  }
-};
-
-document.getElementById("edit-note-btn").onclick = () => {
-  if (!curActive) return;
-  const newNote = prompt("請輸入備註：", window.zones[curActive].note);
-  if (newNote !== null) {
-    const updates = {};
-    const targetId = window.zones[curActive].id;
-    Object.entries(window.zones).forEach(([key, val]) => {
-      if(val.id === targetId) updates['zones/' + key + '/note'] = newNote.trim();
-    });
-    update(ref(db), updates);
-  }
-};
-
-document.getElementById("add-runner-btn").onclick = () => {
-  if (!curActive) return;
-  const newName = prompt("請輸入新「跑腿」的名字：");
-  if (!newName || newName.trim() === "") return;
-  const newRoads = prompt(`請輸入【${newName}】負責的街道名稱\n(多條路段請用逗號、頓號分隔，例如：彌敦道, 亞皆老街)：`);
-  if (newRoads === null) return;
-  
-  const targetId = window.zones[curActive].id;
-  const updates = {};
-  Object.entries(window.zones).forEach(([key, val]) => {
-    if (val.id === targetId) {
-      const currentRunners = val.runners ? JSON.parse(JSON.stringify(val.runners)) : [];
-      currentRunners.push({ name: newName.trim(), roads: newRoads.trim() });
-      updates['zones/' + key + '/runners'] = currentRunners;
-    }
-  });
-  update(ref(db), updates);
-};
-
-window.editRunner = function(idx) {
-  if (!curActive) return;
-  const z = window.zones[curActive];
-  const runner = z.runners[idx];
-  const newName = prompt("修改跑腿名字：", runner.name);
-  if (newName === null || newName.trim() === "") return;
-  const newRoads = prompt(`修改【${newName}】的負責路段：`, runner.roads);
-  if (newRoads === null) return;
-  
-  const targetId = z.id;
-  const updates = {};
-  Object.entries(window.zones).forEach(([key, val]) => {
-    if (val.id === targetId) {
-      const currentRunners = JSON.parse(JSON.stringify(val.runners));
-      currentRunners[idx] = { name: newName.trim(), roads: newRoads.trim() };
-      updates['zones/' + key + '/runners'] = currentRunners;
-    }
-  });
-  update(ref(db), updates);
-};
-
-window.deleteRunner = function(idx) {
-  if (!curActive) return;
-  if (!confirm("確定要將這位跑腿從這個分區刪除嗎？")) return;
-  const targetId = window.zones[curActive].id;
-  const updates = {};
-  Object.entries(window.zones).forEach(([key, val]) => {
-    if (val.id === targetId) {
-      const currentRunners = JSON.parse(JSON.stringify(val.runners));
-      currentRunners.splice(idx, 1);
-      updates['zones/' + key + '/runners'] = currentRunners;
-    }
-  });
-  update(ref(db), updates);
-};
-
-let searchMarker = null;
-
-window.searchAddress = function() {
-  const query = document.getElementById("search-input").value;
-  if (!query.trim()) return;
-  const btn = document.getElementById("search-btn");
-  btn.textContent = "搜尋中...";
-
-  const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(query)}&outSR=4326&maxLocations=1&langCode=zh-HK&searchExtent=113.82,22.13,114.45,22.58`;
-
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      btn.textContent = "搜尋";
-      if (data.candidates && data.candidates.length > 0) {
-        const lat = data.candidates[0].location.y;
-        const lon = data.candidates[0].location.x;
-        map.flyTo([lat, lon], 16, { duration: 1.5 });
-        if (searchMarker) map.removeLayer(searchMarker);
-        searchMarker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>搜尋結果：</b><br>${data.candidates[0].address}`).openPopup();
-      } else {
-        alert(`找不到地址「${query}」！\n請嘗試加上區域名稱，例如：旺角彌敦道`);
-      }
-    })
-    .catch(() => { btn.textContent = "搜尋"; alert("搜尋服務暫時無法使用，請稍後再試。"); });
-};
-</script>
-</body>
-</html>
