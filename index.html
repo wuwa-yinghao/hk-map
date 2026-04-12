@@ -167,7 +167,7 @@
       const updateManagerName = (id, v) => setManagers(managers.map(m => m.id === id ? { ...m, managerName: v } : m));
       const deleteManager = (id) => setManagers(managers.filter(m => m.id !== id));
       const addBro = (mid) => setManagers(managers.map(m => m.id === mid
-        ? { ...m, bros: [...(m.bros || []), { id: Date.now().toString(), name: '', phone: '', orders: 0, amount: 0, isPaid: false }] }
+        ? { ...m, bros: [...(m.bros || []), { id: Date.now().toString(), name: '', phone: '', category: '', orders: 0, amount: 0, isPaid: false }] }
         : m));
       const updateBro = (mid, bid, field, val) => setManagers(managers.map(m => m.id === mid
         ? { ...m, bros: (m.bros || []).map(b => b.id === bid ? { ...b, [field]: val } : b) }
@@ -178,10 +178,10 @@
         ? { ...m, bros: (m.bros || []).map(b => ({ ...b, isPaid: true })) } : m));
 
       const exportCSV = () => {
-        const rows = [['負責人', '小老弟', '電話', '新增商家', '獎金', '押金(20%)', '實派(80%)', '狀態']];
+        const rows = [['負責人', '小老弟', '電話', '負責品類', '新增商家', '獎金', '押金(20%)', '實派(80%)', '狀態']];
         managers.forEach(m => (m.bros || []).forEach(b => {
           const amt = Number(b.amount) || 0;
-          rows.push([m.managerName || '(未命名)', b.name, b.phone, b.orders, amt, calcDeposit(amt), calcPayout(amt), b.isPaid ? '已結帳' : '未結帳']);
+          rows.push([m.managerName || '(未命名)', b.name, b.phone, b.category || '', b.orders, amt, calcDeposit(amt), calcPayout(amt), b.isPaid ? '已結帳' : '未結帳']);
         }));
         const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -202,6 +202,7 @@
             const matchKw = !kw
               || (b.name && b.name.toLowerCase().includes(kw))
               || (b.phone && b.phone.includes(kw))
+              || (b.category && b.category.toLowerCase().includes(kw))
               || (m.managerName && m.managerName.toLowerCase().includes(kw));
             const matchPaid = !unpaidOnly || !b.isPaid;
             return matchKw && matchPaid;
@@ -282,7 +283,7 @@
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="  搜尋小老弟姓名、電話或負責人…"
+                  placeholder="  搜尋姓名、電話、品類或負責人…"
                   className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -357,6 +358,7 @@
                               <tr className="border-b border-slate-800 text-slate-500 text-xs uppercase tracking-wider">
                                 <th className="pb-2 font-medium">姓名</th>
                                 <th className="pb-2 font-medium">電話</th>
+                                <th className="pb-2 font-medium">負責品類</th>
                                 <th className="pb-2 font-medium text-center">新增商家</th>
                                 <th className="pb-2 font-medium">獎金</th>
                                 <th className="pb-2 font-medium text-center">押金 20%</th>
@@ -373,6 +375,21 @@
                                   </td>
                                   <td className="py-2.5 pr-2">
                                     <input type="tel" value={bro.phone || ''} onChange={(e) => updateBro(manager.id, bro.id, 'phone', e.target.value)} className="w-full px-2 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="電話" />
+                                  </td>
+                                  <td className="py-2.5 pr-2">
+                                    <input type="text" value={bro.category || ''} onChange={(e) => updateBro(manager.id, bro.id, 'category', e.target.value)} className="w-full px-2 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="花店、家具店…" list={`cat-${bro.id}`} />
+                                    <datalist id={`cat-${bro.id}`}>
+                                      <option value="花店" />
+                                      <option value="家具店" />
+                                      <option value="餐廳" />
+                                      <option value="咖啡店" />
+                                      <option value="服飾店" />
+                                      <option value="美容店" />
+                                      <option value="便利店" />
+                                      <option value="超市" />
+                                      <option value="藥房" />
+                                      <option value="診所" />
+                                    </datalist>
                                   </td>
                                   <td className="py-2.5 px-2">
                                     <div className="flex items-center justify-center gap-1">
@@ -418,6 +435,22 @@
                               <div className="flex items-center gap-1 mb-2">
                                 <span>📱</span>
                                 <input type="tel" value={bro.phone || ''} onChange={(e) => updateBro(manager.id, bro.id, 'phone', e.target.value)} className="flex-1 px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-slate-200 placeholder-slate-500" placeholder="電話" />
+                              </div>
+                              <div className="flex items-center gap-1 mb-2">
+                                <span>🏷️</span>
+                                <input type="text" value={bro.category || ''} onChange={(e) => updateBro(manager.id, bro.id, 'category', e.target.value)} className="flex-1 px-2 py-1.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-slate-200 placeholder-slate-500" placeholder="負責品類（花店、家具店…）" list={`cat-m-${bro.id}`} />
+                                <datalist id={`cat-m-${bro.id}`}>
+                                  <option value="花店" />
+                                  <option value="家具店" />
+                                  <option value="餐廳" />
+                                  <option value="咖啡店" />
+                                  <option value="服飾店" />
+                                  <option value="美容店" />
+                                  <option value="便利店" />
+                                  <option value="超市" />
+                                  <option value="藥房" />
+                                  <option value="診所" />
+                                </datalist>
                               </div>
                               <div className="grid grid-cols-2 gap-2 mb-2">
                                 <div>
