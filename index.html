@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>地推團隊雲端即時統計板</title>
+  <title>小老弟地推雲端看板 - 專業版</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
-  
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,14 +13,14 @@
   <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-200">
+<body class="bg-slate-950 text-slate-200 antialiased">
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useMemo, useEffect, useRef } = React;
 
     // ==========================================
-    // 你的專屬 Firebase 配置 (已更新)
+    // 你的 Firebase 配置 (已校對)
     // ==========================================
     const firebaseConfig = {
       apiKey: "AIzaSyChJSl71yDiQ1f24KAavDyw_1ViWe-Gc1M",
@@ -44,7 +43,7 @@
     function App() {
       const [managers, setManagers] = useState([]);
       const [loaded, setLoaded] = useState(false);
-      const [saveState, setSaveState] = useState('idle');
+      const [saveState, setSaveState] = useState('idle'); // idle, saving, saved
       const [search, setSearch] = useState('');
       const [unpaidOnly, setUnpaidOnly] = useState(false);
       const [collapsed, setCollapsed] = useState({});
@@ -53,29 +52,25 @@
       const saveTimer = useRef(null);
       const isRemoteUpdate = useRef(false);
 
-      // 監聽雲端資料
+      // --- 雲端數據同步邏輯 ---
       useEffect(() => {
         const unsubscribe = docRef.onSnapshot((doc) => {
           if (doc.exists) {
             isRemoteUpdate.current = true;
             setManagers(doc.data().managers || []);
           } else {
-            const defaultData = [{
-              id: 'm1',
-              managerName: '新負責人',
-              bros: []
-            }];
+            const defaultData = [{ id: 'm1', managerName: '新團隊', bros: [] }];
             setManagers(defaultData);
             docRef.set({ managers: defaultData });
           }
           setLoaded(true);
-        }, (error) => {
-          console.error("Firebase Error:", error);
+        }, (err) => {
+          console.error("Firebase 連線失敗:", err);
+          alert("資料庫連線失敗，請檢查 Firebase Rules 權限！");
         });
         return () => unsubscribe();
       }, []);
 
-      // 自動同步到雲端
       useEffect(() => {
         if (!loaded) return;
         if (isRemoteUpdate.current) {
@@ -96,7 +91,7 @@
         return () => saveTimer.current && clearTimeout(saveTimer.current);
       }, [managers, loaded]);
 
-      // 計算邏輯
+      // --- 計算邏輯 ---
       const summary = useMemo(() => {
         let totalOrders = 0, totalAmount = 0, totalPaid = 0, paidCount = 0, broCount = 0;
         managers.forEach(m => m.bros.forEach(b => {
@@ -105,8 +100,7 @@
           broCount += 1;
           if (b.isPaid) { totalPaid += Number(b.amount) || 0; paidCount += 1; }
         }));
-        const rate = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
-        return { totalOrders, totalAmount, totalPaid, paidCount, broCount, rate };
+        return { totalOrders, totalAmount, totalPaid, paidCount, broCount };
       }, [managers]);
 
       const teamStats = (bros) => {
@@ -119,21 +113,40 @@
         return { orders, amount, paid, outstanding: amount - paid };
       };
 
-      // 操作函數
+      // --- 操作函數 ---
       const addManager = () => setManagers([...managers, { id: Date.now().toString(), managerName: '', bros: [] }]);
       const updateManagerName = (id, v) => setManagers(managers.map(m => m.id === id ? { ...m, managerName: v } : m));
       const deleteManager = (id) => setManagers(managers.filter(m => m.id !== id));
+      
       const addBro = (mid) => setManagers(managers.map(m => m.id === mid
         ? { ...m, bros: [...m.bros, { id: Date.now().toString(), name: '', phone: '', orders: 0, amount: 0, isPaid: false }] }
         : m));
+      
       const updateBro = (mid, bid, field, val) => setManagers(managers.map(m => m.id === mid
         ? { ...m, bros: m.bros.map(b => b.id === bid ? { ...b, [field]: val } : b) }
         : m));
+      
       const deleteBro = (mid, bid) => setManagers(managers.map(m => m.id === mid
         ? { ...m, bros: m.bros.filter(b => b.id !== bid) } : m));
+
       const markTeamAllPaid = (mid) => setManagers(managers.map(m => m.id === mid
         ? { ...m, bros: m.bros.map(b => ({ ...b, isPaid: true })) } : m));
 
+      // 匯出功能
+      const exportCSV = () => {
+        const rows = [['負責人', '小老弟', '電話', '新增商家', '金額', '狀態']];
+        managers.forEach(m => m.bros.forEach(b => {
+          rows.push([m.managerName || '未命名', b.name, b.phone, b.orders, b.amount, b.isPaid ? '已結帳' : '未結帳']);
+        }));
+        const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `地推業績統計_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+      };
+
+      // 搜尋與過濾邏輯
       const filteredManagers = useMemo(() => {
         const kw = search.trim().toLowerCase();
         return managers.map(m => ({
@@ -146,88 +159,214 @@
         })).filter(m => m.bros.length > 0 || (!kw && !unpaidOnly));
       }, [managers, search, unpaidOnly]);
 
-      if (!loaded) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 font-bold">☁️ 正在連接雲端資料庫...</div>;
+      if (!loaded) return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-blue-400 font-bold animate-pulse text-lg">☁️ 正在連線雲端資料庫...</div>;
 
       return (
-        <div className="min-h-screen bg-slate-950 p-4 md:p-6 text-slate-200">
-          <div className="max-w-7xl mx-auto">
-            <header className="flex justify-between items-end mb-6">
-              <div>
-                <h1 className="text-2xl font-bold text-white">☁️ 實時雲端看板</h1>
-                <p className="text-xs text-slate-500 mt-1">數據將在所有設備同步</p>
-              </div>
-              <div className={`text-xs px-3 py-1 rounded-full border ${saveState === 'saving' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : saveState === 'saved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
-                {saveState === 'saving' ? '⏳ 同步中...' : saveState === 'saved' ? '✅ 已同步' : '🌐 連線正常'}
-              </div>
-            </header>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-xl">
-                <p className="text-xs text-blue-400">總新增單數</p>
-                <p className="text-2xl font-bold text-blue-100">{summary.totalOrders}</p>
-              </div>
-              <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl">
-                <p className="text-xs text-emerald-400">已結金額</p>
-                <p className="text-2xl font-bold text-emerald-100">${summary.totalPaid}</p>
-              </div>
+        <div className="min-h-screen p-4 md:p-8 max-w-5xl mx-auto pb-24">
+          
+          {/* Header */}
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                <span className="bg-blue-600 p-1 rounded">LIVE</span> 小老弟業績看板
+              </h1>
+              <p className="text-slate-500 text-sm mt-1">即時同步所有設備的數據</p>
             </div>
-
-            <div className="flex gap-2 mb-6">
-              <input type="text" placeholder="🔍 搜尋姓名或電話..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <button onClick={() => setUnpaidOnly(!unpaidOnly)} className={`px-4 py-2 rounded-lg text-sm border ${unpaidOnly ? 'bg-rose-500 text-white border-rose-500' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>未結</button>
+            <div className="flex items-center gap-3">
+              <div className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                saveState === 'saving' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse' :
+                saveState === 'saved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                'bg-blue-500/10 text-blue-400 border-blue-500/30'
+              }`}>
+                {saveState === 'saving' ? '正在同步數據...' : saveState === 'saved' ? '雲端已儲存' : '雲端連線中'}
+              </div>
+              <button onClick={exportCSV} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-700">
+                匯出 CSV
+              </button>
             </div>
+          </header>
 
-            <div className="space-y-4">
-              {filteredManagers.map(manager => {
-                const stats = teamStats(manager.bros);
-                return (
-                  <div key={manager.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-                    <div className="bg-slate-800/50 p-3 flex justify-between items-center border-b border-slate-800">
-                      <input type="text" value={manager.managerName} onChange={e => updateManagerName(manager.id, e.target.value)} placeholder="負責人姓名" className="bg-transparent font-bold text-white focus:outline-none" />
-                      <button onClick={() => setConfirmDelete({type:'manager', mid:manager.id})} className="text-xs text-rose-400">🗑️ 刪除</button>
+          {/* 大數字看板 */}
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
+              <p className="text-slate-500 text-xs font-bold uppercase mb-1">今日總新增</p>
+              <p className="text-4xl font-black text-blue-500">{summary.totalOrders}<span className="text-lg ml-1 text-slate-600">單</span></p>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
+              <p className="text-slate-500 text-xs font-bold uppercase mb-1">已結帳總額</p>
+              <p className="text-4xl font-black text-emerald-500"><span className="text-2xl">$</span>{summary.totalPaid.toLocaleString()}</p>
+            </div>
+          </div>
+
+          {/* 搜尋與過濾 */}
+          <div className="flex gap-3 mb-8">
+            <div className="relative flex-1">
+              <input 
+                type="text" 
+                placeholder="搜尋負責人、小老弟姓名或電話..." 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+              />
+            </div>
+            <button 
+              onClick={() => setUnpaidOnly(!unpaidOnly)} 
+              className={`px-5 py-3 rounded-xl text-sm font-bold border transition-all ${
+                unpaidOnly ? 'bg-rose-600 text-white border-rose-600 shadow-lg shadow-rose-900/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
+              }`}
+            >
+              只看未結
+            </button>
+          </div>
+
+          {/* 團隊列表區 */}
+          <div className="space-y-6">
+            {filteredManagers.map(manager => {
+              const stats = teamStats(manager.bros);
+              const isCollapsed = collapsed[manager.id];
+              return (
+                <div key={manager.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                  {/* 負責人 Header */}
+                  <div className="bg-slate-800/40 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800">
+                    <div className="flex items-center gap-3 flex-1 w-full">
+                      <button onClick={() => setCollapsed({...collapsed, [manager.id]: !isCollapsed})} className="text-slate-500 hover:text-white transition-colors">
+                        {isCollapsed ? '▶️' : '🔽'}
+                      </button>
+                      <input 
+                        type="text" 
+                        value={manager.managerName} 
+                        onChange={e => updateManagerName(manager.id, e.target.value)} 
+                        placeholder="點此輸入負責人姓名..." 
+                        className="bg-transparent text-lg font-bold text-white focus:outline-none border-b border-transparent focus:border-blue-600 w-full"
+                      />
                     </div>
-                    <div className="p-3">
-                      <div className="space-y-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                      <button onClick={() => markTeamAllPaid(manager.id)} className="text-[10px] px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 rounded hover:bg-emerald-600/30 font-bold">一鍵結帳</button>
+                      <button onClick={() => setConfirmDelete({type:'manager', mid:manager.id})} className="text-[10px] px-3 py-1 bg-rose-600/10 text-rose-500 border border-rose-600/20 rounded hover:bg-rose-600/20 font-bold">刪除團隊</button>
+                    </div>
+                  </div>
+
+                  {/* 團隊小統計 */}
+                  {!isCollapsed && (
+                    <div className="px-4 py-2 bg-slate-950/40 flex gap-4 text-[10px] font-bold text-slate-500 border-b border-slate-800">
+                      <span>👤 {manager.bros.length} 位小老弟</span>
+                      <span>📦 共 {stats.orders} 單</span>
+                      <span className="text-rose-400">⏳ 未結 ${stats.outstanding.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {/* 小老弟清單 */}
+                  {!isCollapsed && (
+                    <div className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {manager.bros.map(bro => (
-                          <div key={bro.id} className={`p-3 rounded-lg border ${bro.isPaid ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-slate-950/50 border-slate-800'}`}>
-                            <div className="flex gap-2 mb-2">
-                              <input type="text" value={bro.name} onChange={e => updateBro(manager.id, bro.id, 'name', e.target.value)} placeholder="小老弟" className="flex-1 bg-slate-800 border-none rounded px-2 py-1 text-sm" />
-                              <button onClick={() => setConfirmDelete({type:'bro', mid:manager.id, bid:bro.id})} className="text-slate-600">❌</button>
+                          <div key={bro.id} className={`group relative p-4 rounded-xl border transition-all ${
+                            bro.isPaid ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' : 'bg-slate-800/40 border-slate-700 hover:border-slate-500 shadow-lg'
+                          }`}>
+                            {/* 第一列：姓名與刪除 */}
+                            <div className="flex justify-between items-center mb-3">
+                              <input 
+                                type="text" 
+                                value={bro.name} 
+                                onChange={e => updateBro(manager.id, bro.id, 'name', e.target.value)} 
+                                placeholder="小老弟姓名" 
+                                className="bg-transparent font-bold text-white focus:outline-none w-2/3"
+                              />
+                              <button onClick={() => setConfirmDelete({type:'bro', mid:manager.id, bid:bro.id})} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500 text-sm transition-all">✕</button>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="flex items-center justify-between bg-slate-800 rounded px-2">
-                                <button onClick={() => updateBro(manager.id, bro.id, 'orders', Math.max(0, bro.orders-1))} className="text-rose-400 p-1">➖</button>
-                                <span className="font-bold text-sm">{bro.orders}</span>
-                                <button onClick={() => updateBro(manager.id, bro.id, 'orders', (bro.orders||0)+1)} className="text-blue-400 p-1">➕</button>
+                            
+                            {/* 第二列：電話 */}
+                            <div className="flex items-center gap-2 mb-4">
+                              <span className="text-xs text-slate-600">📞</span>
+                              <input 
+                                type="tel" 
+                                value={bro.phone} 
+                                onChange={e => updateBro(manager.id, bro.id, 'phone', e.target.value)} 
+                                placeholder="電話號碼" 
+                                className="bg-transparent text-xs text-slate-400 focus:outline-none w-full"
+                              />
+                            </div>
+
+                            {/* 第三列：交互按鈕與結帳 */}
+                            <div className="flex items-center justify-between gap-4">
+                              {/* 加減單數 */}
+                              <div className="flex items-center bg-slate-950 rounded-lg p-1 border border-slate-700">
+                                <button onClick={() => updateBro(manager.id, bro.id, 'orders', Math.max(0, bro.orders-1))} className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-500/10 rounded-md transition-colors font-bold">－</button>
+                                <input 
+                                  type="number" 
+                                  value={bro.orders} 
+                                  onChange={e => updateBro(manager.id, bro.id, 'orders', parseInt(e.target.value) || 0)} 
+                                  className="w-10 text-center bg-transparent font-bold text-sm focus:outline-none"
+                                />
+                                <button onClick={() => updateBro(manager.id, bro.id, 'orders', (Number(bro.orders)||0)+1)} className="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-400/10 rounded-md transition-colors font-bold">＋</button>
                               </div>
-                              <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`text-xs font-bold rounded ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
-                                {bro.isPaid ? '✅ 已結帳' : '未結帳'}
-                              </button>
+
+                              {/* 金額與結帳狀態 */}
+                              <div className="flex-1 flex items-center justify-end gap-2">
+                                <div className="relative w-20">
+                                  <span className="absolute left-1 text-slate-600 text-[10px] top-1/2 -translate-y-1/2">$</span>
+                                  <input 
+                                    type="number" 
+                                    value={bro.amount} 
+                                    onChange={e => updateBro(manager.id, bro.id, 'amount', parseInt(e.target.value) || 0)} 
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-md py-1 pl-4 pr-1 text-right text-sm font-bold text-emerald-400 focus:outline-none"
+                                  />
+                                </div>
+                                <button 
+                                  onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} 
+                                  className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
+                                    bro.isPaid ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'bg-slate-700 text-slate-400'
+                                  }`}
+                                >
+                                  {bro.isPaid ? '已結帳' : '未結'}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <button onClick={() => addBro(manager.id)} className="w-full mt-3 py-2 border border-dashed border-slate-700 rounded-lg text-xs text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors">➕ 新增小老弟</button>
+                      
+                      {/* 新增小老弟按鈕 */}
+                      <button 
+                        onClick={() => addBro(manager.id)} 
+                        className="w-full mt-6 py-4 border-2 border-dashed border-slate-800 rounded-xl text-sm font-bold text-slate-600 hover:text-blue-500 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
+                      >
+                        ＋ 新增小老弟至 {manager.managerName || '此團隊'}
+                      </button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button onClick={addManager} className="w-full mt-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg transition-colors">➕ 建立新大區團隊</button>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
+          {/* 底座功能：新增負責人 */}
+          <div className="fixed bottom-6 left-0 right-0 flex justify-center px-4">
+            <button 
+              onClick={addManager} 
+              className="max-w-xs w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg shadow-2xl shadow-blue-600/40 transition-all transform hover:scale-105 active:scale-95"
+            >
+              ＋ 建立新大區團隊
+            </button>
+          </div>
+
+          {/* 刪除確認彈窗 */}
           {confirmDelete && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-xs w-full">
-                <p className="text-white font-bold mb-4 text-center">確定要刪除嗎？</p>
-                <div className="flex gap-3">
-                  <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-slate-800 rounded-lg">取消</button>
-                  <button onClick={() => {
-                    if(confirmDelete.type==='manager') deleteManager(confirmDelete.mid);
-                    else deleteBro(confirmDelete.mid, confirmDelete.bid);
-                    setConfirmDelete(null);
-                  }} className="flex-1 py-2 bg-rose-500 text-white rounded-lg">確認</button>
+            <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 z-[100]">
+              <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-sm w-full shadow-3xl text-center">
+                <div className="text-4xl mb-4">⚠️</div>
+                <h3 className="text-xl font-black text-white mb-2">確定要刪除嗎？</h3>
+                <p className="text-slate-500 text-sm mb-8">此操作將永久移除資料且無法在雲端還原。</p>
+                <div className="flex gap-4">
+                  <button onClick={() => setConfirmDelete(null)} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-300">取消</button>
+                  <button 
+                    onClick={() => {
+                      if(confirmDelete.type === 'manager') deleteManager(confirmDelete.mid);
+                      else deleteBro(confirmDelete.mid, confirmDelete.bid);
+                      setConfirmDelete(null);
+                    }} 
+                    className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-bold shadow-lg shadow-rose-900/30"
+                  >確認刪除</button>
                 </div>
               </div>
             </div>
