@@ -16,7 +16,7 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script>
-    // Firebase 初始化
+    // Firebase 初始化（等 SDK 加载完再跑）
     const firebaseConfig = {
       apiKey: "AIzaSyChJSl71yDiQ1f24KAavDyw_1ViWe-Gc1M",
       authDomain: "hk-map-d0d52.firebaseapp.com",
@@ -27,8 +27,16 @@
       appId: "1:713658993672:web:e73f4a62f327c5b0e9d5bd",
       measurementId: "G-P371DX8BGQ"
     };
-    firebase.initializeApp(firebaseConfig);
-    window.db = firebase.database();
+    try {
+      if (typeof firebase === 'undefined') {
+        window.__firebaseError = 'Firebase SDK 加载失败。可能原因：\n1. 网络被挡（防火墙/VPN）\n2. 在 Claude 预览视窗中运行（请下载 HTML 用浏览器打开）\n3. gstatic.com 被屏蔽';
+      } else {
+        firebase.initializeApp(firebaseConfig);
+        window.db = firebase.database();
+      }
+    } catch (e) {
+      window.__firebaseError = 'Firebase 初始化失败：' + e.message;
+    }
   </script>
 </head>
 <body class="bg-slate-950 text-slate-200">
@@ -38,6 +46,19 @@
     const { useState, useMemo, useEffect, useRef } = React;
     const DB_PATH = 'dashboard/managers';  // Firebase 資料路徑
     const db = window.db;
+    const firebaseError = window.__firebaseError;
+
+    function ErrorScreen({ message }) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+          <div className="max-w-md bg-rose-500/10 border border-rose-500/40 rounded-xl p-5 text-rose-200">
+            <h2 className="font-bold text-lg mb-2">⚠️ 无法连接 Firebase</h2>
+            <pre className="text-sm whitespace-pre-wrap font-sans">{message}</pre>
+            <p className="text-xs text-rose-300/70 mt-3">请下载 HTML 档案用浏览器直接打开，或部署到 Vercel / Netlify。</p>
+          </div>
+        </div>
+      );
+    }
 
     function App() {
       const [managers, setManagers] = useState([]);
@@ -107,26 +128,39 @@
         return () => saveTimer.current && clearTimeout(saveTimer.current);
       }, [managers, loaded]);
 
+      const DEPOSIT_RATE = 0.2; // 押金比例 20%
+      const calcDeposit = (amount) => Math.round((Number(amount) || 0) * DEPOSIT_RATE);
+      const calcPayout = (amount) => (Number(amount) || 0) - calcDeposit(amount);
+
       const summary = useMemo(() => {
-        let totalOrders = 0, totalAmount = 0, totalPaid = 0, paidCount = 0, broCount = 0;
+        let totalOrders = 0, totalBonus = 0, totalPayout = 0, totalDeposit = 0, paidCount = 0, broCount = 0;
         managers.forEach(m => (m.bros || []).forEach(b => {
+          const amt = Number(b.amount) || 0;
           totalOrders += Number(b.orders) || 0;
-          totalAmount += Number(b.amount) || 0;
+          totalBonus += amt;
           broCount += 1;
-          if (b.isPaid) { totalPaid += Number(b.amount) || 0; paidCount += 1; }
+          if (b.isPaid) {
+            totalPayout += calcPayout(amt);
+            totalDeposit += calcDeposit(amt);
+            paidCount += 1;
+          }
         }));
-        const rate = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
-        return { totalOrders, totalAmount, totalPaid, paidCount, broCount, rate };
+        const rate = totalBonus > 0 ? Math.round(((totalPayout + totalDeposit) / totalBonus) * 100) : 0;
+        return { totalOrders, totalBonus, totalPayout, totalDeposit, paidCount, broCount, rate };
       }, [managers]);
 
       const teamStats = (bros) => {
-        let orders = 0, amount = 0, paid = 0;
+        let orders = 0, bonus = 0, payout = 0, deposit = 0;
         (bros || []).forEach(b => {
+          const amt = Number(b.amount) || 0;
           orders += Number(b.orders) || 0;
-          amount += Number(b.amount) || 0;
-          if (b.isPaid) paid += Number(b.amount) || 0;
+          bonus += amt;
+          if (b.isPaid) {
+            payout += calcPayout(amt);
+            deposit += calcDeposit(amt);
+          }
         });
-        return { orders, amount, paid, outstanding: amount - paid };
+        return { orders, bonus, payout, deposit, outstanding: bonus - payout - deposit };
       };
 
       const addManager = () => setManagers([...managers, { id: Date.now().toString(), managerName: '', bros: [] }]);
@@ -144,9 +178,10 @@
         ? { ...m, bros: (m.bros || []).map(b => ({ ...b, isPaid: true })) } : m));
 
       const exportCSV = () => {
-        const rows = [['負責人', '小老弟', '電話', '新增商家', '金額', '狀態']];
+        const rows = [['負責人', '小老弟', '電話', '新增商家', '獎金', '押金(20%)', '實派(80%)', '狀態']];
         managers.forEach(m => (m.bros || []).forEach(b => {
-          rows.push([m.managerName || '(未命名)', b.name, b.phone, b.orders, b.amount, b.isPaid ? '已結帳' : '未結帳']);
+          const amt = Number(b.amount) || 0;
+          rows.push([m.managerName || '(未命名)', b.name, b.phone, b.orders, amt, calcDeposit(amt), calcPayout(amt), b.isPaid ? '已結帳' : '未結帳']);
         }));
         const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -217,9 +252,10 @@
             </header>
 
             {/* 總結卡 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-5">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-5">
               <StatCard icon="📦" label="今日總新增" value={summary.totalOrders} suffix="家" tone="blue" />
-              <StatCard icon="💰" label="已結帳" value={`$${summary.totalPaid.toLocaleString()}`} tone="emerald" />
+              <StatCard icon="💰" label="已派獎金" value={`$${summary.totalPayout.toLocaleString()}`} tone="emerald" />
+              <StatCard icon="🔒" label="已扣押金" value={`$${summary.totalDeposit.toLocaleString()}`} tone="amber" />
             </div>
 
             {/* 結帳進度 */}
@@ -305,9 +341,10 @@
                       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
                         <span>👥 {bros.length} 人</span>
                         <span>📦 {stats.orders} 家</span>
-                        <span>💰 ${stats.amount.toLocaleString()}</span>
-                        <span className="text-emerald-400">✅ 已結帳 ${stats.paid.toLocaleString()}</span>
-                        {stats.outstanding > 0 && <span className="text-rose-400">⏳ 未結帳 ${stats.outstanding.toLocaleString()}</span>}
+                        <span>💰 獎金 ${stats.bonus.toLocaleString()}</span>
+                        <span className="text-emerald-400">✅ 已派 ${stats.payout.toLocaleString()}</span>
+                        <span className="text-amber-400">🔒 押金 ${stats.deposit.toLocaleString()}</span>
+                        {stats.outstanding > 0 && <span className="text-rose-400">⏳ 未結 ${stats.outstanding.toLocaleString()}</span>}
                       </div>
                     </div>
 
@@ -321,7 +358,9 @@
                                 <th className="pb-2 font-medium">姓名</th>
                                 <th className="pb-2 font-medium">電話</th>
                                 <th className="pb-2 font-medium text-center">新增商家</th>
-                                <th className="pb-2 font-medium">金額</th>
+                                <th className="pb-2 font-medium">獎金</th>
+                                <th className="pb-2 font-medium text-center">押金 20%</th>
+                                <th className="pb-2 font-medium text-center">實派 80%</th>
                                 <th className="pb-2 font-medium text-center">狀態</th>
                                 <th className="pb-2 font-medium text-center w-12"></th>
                               </tr>
@@ -347,6 +386,12 @@
                                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
                                       <input type="number" min="0" value={bro.amount || 0} onChange={(e) => updateBro(manager.id, bro.id, 'amount', parseFloat(e.target.value) || 0)} className="w-full pl-6 pr-2 py-1.5 bg-slate-950 border border-slate-800 rounded-md text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                                     </div>
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center">
+                                    <span className="text-sm text-amber-300 font-medium">${calcDeposit(bro.amount).toLocaleString()}</span>
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center">
+                                    <span className="text-sm text-emerald-300 font-semibold">${calcPayout(bro.amount).toLocaleString()}</span>
                                   </td>
                                   <td className="py-2.5 text-center">
                                     <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
@@ -384,11 +429,21 @@
                                   </div>
                                 </div>
                                 <div>
-                                  <label className="text-xs text-slate-500 mb-1 block">金額</label>
+                                  <label className="text-xs text-slate-500 mb-1 block">獎金</label>
                                   <div className="relative">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
                                     <input type="number" min="0" value={bro.amount || 0} onChange={(e) => updateBro(manager.id, bro.id, 'amount', parseFloat(e.target.value) || 0)} className="w-full pl-6 pr-2 py-1.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-slate-200" />
                                   </div>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
+                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-1.5 flex justify-between items-center">
+                                  <span className="text-amber-300">🔒 押金 20%</span>
+                                  <span className="text-amber-100 font-semibold">${calcDeposit(bro.amount).toLocaleString()}</span>
+                                </div>
+                                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-md px-2 py-1.5 flex justify-between items-center">
+                                  <span className="text-emerald-300">💵 實派 80%</span>
+                                  <span className="text-emerald-100 font-semibold">${calcPayout(bro.amount).toLocaleString()}</span>
                                 </div>
                               </div>
                               <button onClick={() => updateBro(manager.id, bro.id, 'isPaid', !bro.isPaid)} className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${bro.isPaid ? 'bg-emerald-500 text-white' : 'bg-slate-900 border border-slate-700 text-slate-300'}`}>
@@ -444,6 +499,7 @@
       const tones = {
         blue: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: 'text-blue-400', text: 'text-blue-100' },
         emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: 'text-emerald-400', text: 'text-emerald-100' },
+        amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: 'text-amber-400', text: 'text-amber-100' },
       };
       const t = tones[tone];
       return (
@@ -459,7 +515,7 @@
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    root.render(firebaseError ? <ErrorScreen message={firebaseError} /> : <App />);
   </script>
 </body>
 </html>
