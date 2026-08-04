@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "上下游差額幣種計算器"
+description = "保留原有上下游利潤計算功能，加入手機邊緣滑動幣種切換與幣種管理，方便分別計算馬幣、新幣、港幣與越盾的利潤。"
+version = "1.0.0"
+id = "artifacts/currency-profit-calculator"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18950
+
+[services.development]
+run = "pnpm --filter @workspace/currency-profit-calculator run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/currency-profit-calculator", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/currency-profit-calculator/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18950"
+BASE_PATH = "/"

@@ -1,0 +1,1 @@
+- [Currency calculator UX](currency-calculator-ux.md) — preserve the original mobile calculator flow while keeping each currency's inputs isolated in browser storage.
