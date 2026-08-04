@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings, X } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
 
@@ -35,37 +35,47 @@ export function CurrencyRail({
           exit={{ opacity: 0, x: side === 'left' ? -92 : 92, scale: 0.88 }}
           transition={{ type: 'spring', damping: 23, stiffness: 300 }}
           className={cn(
-            'fixed z-[80] flex -translate-y-1/2 flex-col items-center gap-2',
-            side === 'left' ? 'left-3' : 'right-3',
+            'fixed z-[80] h-[230px] w-[130px] -translate-y-1/2 pointer-events-none',
+            side === 'left' ? 'left-0' : 'right-0',
           )}
           style={{ top: `${anchorY}px` }}
           data-html2canvas-ignore="true"
           aria-label="浮動幣種切換"
         >
-          <div className="pointer-events-none absolute inset-x-1/2 top-1/2 h-[calc(100%+24px)] w-px -translate-x-1/2 -translate-y-1/2 bg-primary/20" />
-
           {currencies.map((currency) => {
             const isActive = activeId === currency.id;
             const isHovered = hoverId === currency.id;
+            const center = (currencies.length - 1) / 2;
+            const indexOffset = currencies.indexOf(currency) - center;
+            const normalizedOffset = center === 0 ? 0 : indexOffset / center;
+            const curve = 1 - normalizedOffset * normalizedOffset;
+            const x = side === 'left'
+              ? 22 + curve * 74
+              : 108 - curve * 74;
+            const y = 115 + indexOffset * 46;
 
             return (
               <motion.button
                 key={currency.id}
                 type="button"
                 whileTap={{ scale: 0.88 }}
-                onClick={() => {
+                onPointerEnter={() => {
+                  onHover(currency.id);
+                  onSelect(currency.id);
+                }}
+                onPointerLeave={() => onHover(null)}
+                onPointerUp={() => {
                   onSelect(currency.id);
                   onHover(null);
                   onClose();
                 }}
-                onPointerEnter={() => onHover(currency.id)}
-                onPointerLeave={() => onHover(null)}
                 className={cn(
-                  'relative flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-full border font-mono shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-colors',
+                  'pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border font-mono shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-colors',
                   isActive || isHovered
                     ? 'border-primary bg-primary text-primary-foreground shadow-[0_0_20px_rgba(76,158,255,0.42)]'
                     : 'border-border bg-calc-surface text-muted-foreground hover:border-primary/70 hover:text-foreground',
                 )}
+                style={{ left: `${x}px`, top: `${y}px` }}
                 data-currency-id={currency.id}
                 aria-label={`切換至${currency.name} ${currency.code}`}
               >
@@ -96,23 +106,12 @@ export function CurrencyRail({
               onOpenManager();
             }}
             onPointerEnter={() => onHover(null)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-calc-surface2 text-muted-foreground shadow-[0_6px_18px_rgba(0,0,0,0.4)] transition-colors hover:border-primary hover:text-primary"
+            className="pointer-events-auto absolute bottom-[-12px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-calc-surface2 text-muted-foreground shadow-[0_6px_18px_rgba(0,0,0,0.4)] transition-colors hover:border-primary hover:text-primary"
             aria-label="管理幣種"
           >
             <Settings size={16} />
           </motion.button>
 
-          <button
-            type="button"
-            onClick={() => {
-              onHover(null);
-              onClose();
-            }}
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-border/80 bg-calc-surface text-muted-foreground shadow-lg transition-colors hover:text-foreground"
-            aria-label="關閉浮動幣種切換"
-          >
-            <X size={13} />
-          </button>
         </motion.div>
       )}
     </AnimatePresence>

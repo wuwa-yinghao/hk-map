@@ -38,6 +38,8 @@ export default function CalculatorPage() {
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+  const isRailOpenRef = useRef(false);
+  const railDismissTimerRef = useRef<number | null>(null);
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
@@ -46,26 +48,28 @@ export default function CalculatorPage() {
   });
 
   useEffect(() => {
-    const menuHeight = () => Math.min(window.innerHeight - 28, (currencies.length + 2) * 58);
+    isRailOpenRef.current = isRailOpen;
+    if (!isRailOpen && railDismissTimerRef.current) {
+      window.clearTimeout(railDismissTimerRef.current);
+      railDismissTimerRef.current = null;
+    }
+  }, [isRailOpen]);
+
+  useEffect(() => {
+    const menuHeight = () => Math.min(window.innerHeight - 28, 230);
     const clampAnchor = (y: number) => {
       const half = menuHeight() / 2;
       return Math.max(half + 14, Math.min(window.innerHeight - half - 14, y));
     };
 
-    const currencyAtY = (y: number) => {
-      const itemCount = currencies.length + 2;
-      const itemHeight = 56;
-      const firstCenter = railAnchorY - ((itemCount - 1) * itemHeight) / 2;
-      let closestIndex = -1;
-      let closestDistance = 31;
-      for (let index = 0; index < currencies.length; index += 1) {
-        const distance = Math.abs(y - (firstCenter + index * itemHeight));
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestIndex = index;
-        }
-      }
-      return closestIndex >= 0 ? currencies[closestIndex].id : null;
+    const currencyAtPoint = (x: number, y: number) => {
+      const target = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-currency-id]');
+      if (target?.dataset.currencyId) return target.dataset.currencyId;
+
+      // A fingertip often sits just outside the visible circle while dragging.
+      // Use the curved buttons' vertical rhythm as a forgiving touch target.
+      const index = Math.round((y - (railAnchorY - ((currencies.length - 1) * 46) / 2)) / 46);
+      return currencies[index]?.id ?? null;
     };
     
     const onTouchStart = (e: TouchEvent) => {
@@ -85,8 +89,10 @@ export default function CalculatorPage() {
       const diffX = x - startX;
       const diffY = y - startY;
 
-      if (isRailOpen) {
-        setHoverCurrencyId(currencyAtY(y));
+      if (isRailOpenRef.current) {
+        const currencyId = currencyAtPoint(x, y);
+        setHoverCurrencyId(currencyId);
+        if (currencyId) setActiveId(currencyId);
         return;
       }
 
@@ -94,18 +100,18 @@ export default function CalculatorPage() {
         const isOpeningFromLeft = side === 'left' && diffX > 0;
         const isOpeningFromRight = side === 'right' && diffX < 0;
         if (isOpeningFromLeft || isOpeningFromRight) {
+          if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
           gestureRef.current.opening = true;
           setRailSide(side!);
           setRailAnchorY(clampAnchor(startY));
-          setHoverCurrencyId(currencyAtY(startY));
           setIsRailOpen(true);
         }
       }
     };
 
     const onTouchEnd = () => {
-      if (isRailOpen && gestureRef.current.opening && hoverCurrencyId) {
-        setActiveId(hoverCurrencyId);
+      if (gestureRef.current.opening || isRailOpenRef.current) {
+        if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
         setHoverCurrencyId(null);
         setIsRailOpen(false);
       }
@@ -117,13 +123,89 @@ export default function CalculatorPage() {
     
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });
+    const preventPageScroll = (event: TouchEvent) => {
+      if (isRailOpenRef.current) event.preventDefault();
+    };
+    window.addEventListener('touchmove', preventPageScroll, { passive: false });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
     return () => {
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchmove', preventPageScroll);
       window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [currencies, hoverCurrencyId, isRailOpen, setActiveId]);
+  }, [currencies, railAnchorY, setActiveId]);
+
+  useEffect(() => {
+    if (!isRailOpen) return;
+
+    const scrollY = window.scrollY;
+    const { body, documentElement } = document;
+    const preventBackgroundTouchMove = (event: TouchEvent) => event.preventDefault();
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+      overscroll: documentElement.style.overscrollBehavior,
+      touchAction: documentElement.style.touchAction,
+    };
+
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+    documentElement.style.overscrollBehavior = 'none';
+    documentElement.style.touchAction = 'none';
+    document.addEventListener('touchmove', preventBackgroundTouchMove, { passive: false });
+
+    return () => {
+      document.removeEventListener('touchmove', preventBackgroundTouchMove);
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.width = previous.width;
+      body.style.overflow = previous.overflow;
+      documentElement.style.overscrollBehavior = previous.overscroll;
+      documentElement.style.touchAction = previous.touchAction;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isRailOpen]);
+
+  const handleCurrencyHover = (id: string | null) => {
+    setHoverCurrencyId(id);
+    if (id) setActiveId(id);
+  };
+
+  const closeFloatingCurrencies = () => {
+    if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
+    railDismissTimerRef.current = null;
+    setHoverCurrencyId(null);
+    setIsRailOpen(false);
+  };
+
+  const selectFloatingCurrency = (id: string) => {
+    if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
+    railDismissTimerRef.current = null;
+    setActiveId(id);
+  };
+
+  const openFloatingCurrencies = (side: 'left' | 'right') => {
+    if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
+    setRailSide(side);
+    setRailAnchorY(Math.max(190, Math.min(window.innerHeight - 190, window.innerHeight / 2)));
+    setHoverCurrencyId(null);
+    setIsRailOpen(true);
+    railDismissTimerRef.current = window.setTimeout(() => {
+      setHoverCurrencyId(null);
+      setIsRailOpen(false);
+    }, 3600);
+  };
+
+  useEffect(() => () => {
+    if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
+  }, []);
 
   const handleScreenshot = async () => {
     const src = await takeScreenshot('calculator-capture-area');
@@ -151,7 +233,10 @@ export default function CalculatorPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col items-center pb-[max(24px,env(safe-area-inset-bottom))] pt-[calc(max(24px,env(safe-area-inset-top))+12px)] px-3 bg-background font-sans overflow-x-hidden">
+    <div className={cn(
+      "min-h-[100dvh] w-full flex flex-col items-center pb-[max(24px,env(safe-area-inset-bottom))] pt-[calc(max(24px,env(safe-area-inset-top))+12px)] px-3 bg-background font-sans overflow-x-hidden",
+      isRailOpen && "currency-rail-open",
+    )}>
       
       <div className="w-full max-w-[420px] flex flex-col gap-2 relative z-10" id="calculator-capture-area">
         
@@ -341,41 +426,41 @@ export default function CalculatorPage() {
       </div>
 
       {/* Discoverability Handles */}
-      <div 
-        className="fixed inset-y-0 left-0 w-3 z-40 flex items-center justify-start group touch-none" 
-        onPointerDown={() => {
-          setRailSide('left');
-          setRailAnchorY(Math.max(190, Math.min(window.innerHeight - 190, window.innerHeight / 2)));
-          setHoverCurrencyId(null);
-          setIsRailOpen(true);
-        }}
-        data-html2canvas-ignore="true"
-      >
-        <div className="w-1 h-12 bg-white/10 rounded-r-md group-hover:bg-white/20 transition-colors" />
-      </div>
-      <div 
-        className="fixed inset-y-0 right-0 w-3 z-40 flex items-center justify-end group touch-none" 
-        onPointerDown={() => {
-          setRailSide('right');
-          setRailAnchorY(Math.max(190, Math.min(window.innerHeight - 190, window.innerHeight / 2)));
-          setHoverCurrencyId(null);
-          setIsRailOpen(true);
-        }}
-        data-html2canvas-ignore="true"
-      >
-        <div className="w-1 h-12 bg-white/10 rounded-l-md group-hover:bg-white/20 transition-colors" />
-      </div>
+      {!isRailOpen && (
+        <>
+          <button
+            type="button"
+            className="fixed left-2 top-1/2 z-[90] flex h-16 w-10 -translate-y-1/2 items-center justify-start touch-none"
+            onPointerDown={() => openFloatingCurrencies('left')}
+            onClick={() => openFloatingCurrencies('left')}
+            aria-label="從左側開啟幣種浮球"
+            data-html2canvas-ignore="true"
+          >
+            <span className="h-12 w-1 rounded-r-md bg-white/10 transition-colors hover:bg-white/20" />
+          </button>
+          <button
+            type="button"
+            className="fixed right-2 top-1/2 z-[90] flex h-16 w-10 -translate-y-1/2 items-center justify-end touch-none"
+            onPointerDown={() => openFloatingCurrencies('right')}
+            onClick={() => openFloatingCurrencies('right')}
+            aria-label="從右側開啟幣種浮球"
+            data-html2canvas-ignore="true"
+          >
+            <span className="h-12 w-1 rounded-l-md bg-white/10 transition-colors hover:bg-white/20" />
+          </button>
+        </>
+      )}
 
       <CurrencyRail 
         isOpen={isRailOpen}
-        onClose={() => setIsRailOpen(false)}
+        onClose={closeFloatingCurrencies}
         currencies={currencies}
         activeId={activeId}
         hoverId={hoverCurrencyId}
         side={railSide}
         anchorY={railAnchorY}
-        onSelect={setActiveId}
-        onHover={setHoverCurrencyId}
+        onSelect={selectFloatingCurrency}
+          onHover={handleCurrencyHover}
         onOpenManager={() => setIsManagerOpen(true)}
       />
       <CurrencyManager 

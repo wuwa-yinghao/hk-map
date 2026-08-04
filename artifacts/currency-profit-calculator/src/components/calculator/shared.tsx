@@ -24,7 +24,6 @@ const variantFocusClasses = {
 export function CalcCard({ variant, title, children }: { variant: CardVariant, title: string, children: React.ReactNode }) {
   return (
     <div className="relative bg-calc-surface border border-border rounded-[10px] p-2.5 px-3">
-      <div className={cn("absolute left-0 top-[12%] bottom-[12%] w-[3px] rounded-full", variantColors[variant])} />
       <div className="flex items-center gap-1.5 mb-2">
         <div className={cn("w-1.5 h-1.5 rounded-full", variantColors[variant])} />
         <h3 className={cn("text-[13px] font-semibold", variantTextColors[variant])}>{title}</h3>
