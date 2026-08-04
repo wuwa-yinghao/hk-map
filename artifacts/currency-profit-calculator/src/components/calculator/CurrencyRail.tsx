@@ -47,12 +47,14 @@ export function CurrencyRail({
             const isHovered = hoverId === currency.id;
             const center = (currencies.length - 1) / 2;
             const indexOffset = currencies.indexOf(currency) - center;
-            const normalizedOffset = center === 0 ? 0 : indexOffset / center;
-            const curve = 1 - normalizedOffset * normalizedOffset;
+            const buttonSpacing = Math.min(46, 184 / Math.max(currencies.length - 1, 1));
+            const arcRadius = 92;
+            const arcStep = Math.asin(buttonSpacing / arcRadius);
+            const arcAngle = indexOffset * arcStep;
             const x = side === 'left'
-              ? 22 + curve * 74
-              : 108 - curve * 74;
-            const y = 115 + indexOffset * 46;
+              ? 18 + arcRadius * Math.cos(arcAngle)
+              : 112 - arcRadius * Math.cos(arcAngle);
+            const y = 115 + arcRadius * Math.sin(arcAngle);
 
             return (
               <motion.button

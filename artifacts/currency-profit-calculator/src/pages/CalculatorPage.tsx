@@ -38,8 +38,11 @@ export default function CalculatorPage() {
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+  const [currencyPulse, setCurrencyPulse] = useState(false);
   const isRailOpenRef = useRef(false);
   const railDismissTimerRef = useRef<number | null>(null);
+  const currencyPulseTimerRef = useRef<number | null>(null);
+  const previousActiveIdRef = useRef(activeId);
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
@@ -56,6 +59,21 @@ export default function CalculatorPage() {
   }, [isRailOpen]);
 
   useEffect(() => {
+    if (previousActiveIdRef.current === activeId) return;
+    previousActiveIdRef.current = activeId;
+    setCurrencyPulse(true);
+    if (currencyPulseTimerRef.current) window.clearTimeout(currencyPulseTimerRef.current);
+    currencyPulseTimerRef.current = window.setTimeout(() => {
+      setCurrencyPulse(false);
+      currencyPulseTimerRef.current = null;
+    }, 520);
+
+    return () => {
+      if (currencyPulseTimerRef.current) window.clearTimeout(currencyPulseTimerRef.current);
+    };
+  }, [activeId]);
+
+  useEffect(() => {
     const menuHeight = () => Math.min(window.innerHeight - 28, 230);
     const clampAnchor = (y: number) => {
       const half = menuHeight() / 2;
@@ -68,7 +86,8 @@ export default function CalculatorPage() {
 
       // A fingertip often sits just outside the visible circle while dragging.
       // Use the curved buttons' vertical rhythm as a forgiving touch target.
-      const index = Math.round((y - (railAnchorY - ((currencies.length - 1) * 46) / 2)) / 46);
+      const buttonSpacing = Math.min(46, 184 / Math.max(currencies.length - 1, 1));
+      const index = Math.round((y - (railAnchorY - ((currencies.length - 1) * buttonSpacing) / 2)) / buttonSpacing);
       return currencies[index]?.id ?? null;
     };
     
@@ -76,7 +95,10 @@ export default function CalculatorPage() {
       const touch = e.touches[0];
       gestureRef.current.startX = touch.clientX;
       gestureRef.current.startY = touch.clientY;
-      gestureRef.current.opening = false;
+      // A touch that starts on an already-open rail should dismiss it on
+      // release. A tap on a closed edge handle must be allowed to finish
+      // opening the rail without the same touchend immediately closing it.
+      gestureRef.current.opening = isRailOpenRef.current;
       gestureRef.current.side =
         touch.clientX < 28 ? 'left' : touch.clientX > window.innerWidth - 28 ? 'right' : null;
     };
@@ -110,7 +132,7 @@ export default function CalculatorPage() {
     };
 
     const onTouchEnd = () => {
-      if (gestureRef.current.opening || isRailOpenRef.current) {
+      if (gestureRef.current.opening) {
         if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
         setHoverCurrencyId(null);
         setIsRailOpen(false);
@@ -205,6 +227,7 @@ export default function CalculatorPage() {
 
   useEffect(() => () => {
     if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
+    if (currencyPulseTimerRef.current) window.clearTimeout(currencyPulseTimerRef.current);
   }, []);
 
   const handleScreenshot = async () => {
@@ -368,21 +391,44 @@ export default function CalculatorPage() {
         </div>
 
         {/* Main Dashboard */}
-        <div className="bg-gradient-to-b from-[#1C2130] to-[#12151D] border border-[rgba(76,158,255,0.25)] rounded-xl p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)] shrink-0 mt-1 mb-1">
+        <motion.div
+          className="bg-gradient-to-b from-[#1C2130] to-[#12151D] border border-[rgba(76,158,255,0.25)] rounded-xl p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)] shrink-0 mt-1 mb-1"
+          animate={currencyPulse ? {
+            scale: [1, 1.018, 1],
+            boxShadow: [
+              '0 8px 24px rgba(0,0,0,0.3)',
+              '0 0 26px rgba(76,158,255,0.38)',
+              '0 8px 24px rgba(0,0,0,0.3)',
+            ],
+          } : {
+            scale: 1,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          }}
+          transition={{ duration: 0.52, ease: 'easeOut' }}
+        >
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[11px] tracking-wider text-muted-foreground font-semibold uppercase flex-1 text-center pl-10">
               上下游利潤分析 ({state.mode === 'deposit' ? '入金' : '出金'})
             </h3>
-            <div className="text-[10px] font-mono bg-calc-surface2 text-muted-foreground px-2 py-0.5 rounded-full shrink-0 border border-border flex items-center justify-center min-w-[36px]">
-              {activeCurrency.code}
-            </div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activeId}
+                initial={{ opacity: 0, scale: 0.72, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+                className="text-[10px] font-mono bg-calc-surface2 text-muted-foreground px-2 py-0.5 rounded-full shrink-0 border border-border flex items-center justify-center min-w-[36px]"
+                aria-live="polite"
+              >
+                {activeCurrency.code}
+              </motion.div>
+            </AnimatePresence>
           </div>
           <DiffDisplay absolute={calc.diffAbsolute} percent={calc.diffPercent} large />
           <Gauge diffAbsolute={calc.diffAbsolute} diffPercent={calc.diffPercent} />
           <div className="flex justify-between px-1 font-mono text-[9px] text-muted-foreground">
             <span>−50%</span><span>0</span><span>+50%</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Mode Toggle */}
         <div className="flex gap-1.5 bg-calc-surface/60 p-[3px] rounded-lg border border-border shrink-0">
