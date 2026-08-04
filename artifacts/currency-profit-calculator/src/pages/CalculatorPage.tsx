@@ -23,6 +23,36 @@ function AdjustButton({ onClick, children }: { onClick: () => void, children: Re
   );
 }
 
+function CurrencySwitchSection({
+  pulse,
+  className,
+  children,
+}: {
+  pulse: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.div
+      className={className}
+      animate={pulse ? {
+        scale: [1, 1.018, 1],
+        boxShadow: [
+          '0 8px 24px rgba(0,0,0,0.3)',
+          '0 0 26px rgba(76,158,255,0.38)',
+          '0 8px 24px rgba(0,0,0,0.3)',
+        ],
+      } : {
+        scale: 1,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+      }}
+      transition={{ duration: 0.52, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export default function CalculatorPage() {
   const { toast } = useToast();
   const { currencies, activeId, setActiveId, addCurrency, removeCurrency } = useCurrencies();
@@ -287,7 +317,10 @@ export default function CalculatorPage() {
       <div className="w-full max-w-[420px] flex flex-col gap-2 relative z-10" id="calculator-capture-area">
         
         {/* Real-time Rate Accordion */}
-        <div className="border border-border rounded-[10px] bg-calc-surface2/40 overflow-hidden mb-0.5">
+        <CurrencySwitchSection
+          pulse={currencyPulse}
+          className="border border-border rounded-[10px] bg-calc-surface2/40 overflow-hidden mb-0.5"
+        >
           <div 
             className="px-3.5 py-2.5 flex justify-between items-center cursor-pointer select-none"
             onClick={() => setIsAccordionOpen(!isAccordionOpen)}
@@ -329,11 +362,12 @@ export default function CalculatorPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </CurrencySwitchSection>
 
         {/* Upstream Card */}
         <div className="flex flex-col gap-2">
-          <CalcCard variant="up" title="上游 (成本)">
+          <CurrencySwitchSection pulse={currencyPulse}>
+            <CalcCard variant="up" title="上游 (成本)">
             <FieldRow label="金額" variant="up">
               <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
             </FieldRow>
@@ -358,10 +392,12 @@ export default function CalculatorPage() {
               <span className="text-[11px] text-muted-foreground">成本結果</span>
               <span className="font-mono text-[15px] font-semibold text-calc-up">{calc.upResult.toFixed(3)}</span>
             </div>
-          </CalcCard>
+            </CalcCard>
+          </CurrencySwitchSection>
 
           {/* Downstream Card */}
-          <CalcCard variant="down" title="下游 (報價)">
+          <CurrencySwitchSection pulse={currencyPulse}>
+            <CalcCard variant="down" title="下游 (報價)">
             <FieldRow label="金額" variant="down">
               <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
             </FieldRow>
@@ -386,11 +422,15 @@ export default function CalculatorPage() {
               <span className="text-[11px] text-muted-foreground">報價結果</span>
               <span className="font-mono text-[15px] font-semibold text-calc-down">{calc.downResult.toFixed(3)}</span>
             </div>
-          </CalcCard>
+            </CalcCard>
+          </CurrencySwitchSection>
         </div>
 
         {/* Downstream Quick Adjust */}
-        <div className="bg-calc-surface border border-border rounded-[10px] p-2.5 px-3 flex flex-col gap-1.5">
+        <CurrencySwitchSection
+          pulse={currencyPulse}
+          className="bg-calc-surface border border-border rounded-[10px] p-2.5 px-3 flex flex-col gap-1.5"
+        >
           <div className="flex items-center gap-1.5 mb-0.5">
             <div className="w-1.5 h-1.5 rounded-full bg-calc-down" />
             <h4 className="text-[11.5px] font-semibold text-calc-down">下游快速微調</h4>
@@ -411,23 +451,12 @@ export default function CalculatorPage() {
               <AdjustButton onClick={() => adjustDownRatePct(1)}>+1%</AdjustButton>
             </div>
           </div>
-        </div>
+        </CurrencySwitchSection>
 
         {/* Main Dashboard */}
-        <motion.div
+        <CurrencySwitchSection
+          pulse={currencyPulse}
           className="bg-gradient-to-b from-[#1C2130] to-[#12151D] border border-[rgba(76,158,255,0.25)] rounded-xl p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)] shrink-0 mt-1 mb-1"
-          animate={currencyPulse ? {
-            scale: [1, 1.018, 1],
-            boxShadow: [
-              '0 8px 24px rgba(0,0,0,0.3)',
-              '0 0 26px rgba(76,158,255,0.38)',
-              '0 8px 24px rgba(0,0,0,0.3)',
-            ],
-          } : {
-            scale: 1,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-          }}
-          transition={{ duration: 0.52, ease: 'easeOut' }}
         >
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[11px] tracking-wider text-muted-foreground font-semibold uppercase flex-1 text-center pl-10">
@@ -451,10 +480,13 @@ export default function CalculatorPage() {
           <div className="flex justify-between px-1 font-mono text-[9px] text-muted-foreground">
             <span>−50%</span><span>0</span><span>+50%</span>
           </div>
-        </motion.div>
+        </CurrencySwitchSection>
 
         {/* Mode Toggle */}
-        <div className="flex gap-1.5 bg-calc-surface/60 p-[3px] rounded-lg border border-border shrink-0">
+        <CurrencySwitchSection
+          pulse={currencyPulse}
+          className="flex gap-1.5 bg-calc-surface/60 p-[3px] rounded-lg border border-border shrink-0"
+        >
           <button 
             onClick={() => updateField('mode', 'deposit')}
             className={cn("flex-1 h-[34px] rounded-md text-[13.5px] font-bold tracking-wide transition-all", 
@@ -469,28 +501,32 @@ export default function CalculatorPage() {
           >
             出金
           </button>
-        </div>
+        </CurrencySwitchSection>
 
         {/* Bottom Actions */}
-        <button 
-          type="button" 
-          onClick={reset}
-          data-html2canvas-ignore="true"
-          className="w-full min-h-[38px] rounded-lg border border-[rgba(255,92,92,0.35)] bg-calc-surface text-calc-neg text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2 transition-all"
-        >
-          <RefreshCw size={14} />
-          <span>重置全部欄位</span>
-        </button>
+        <CurrencySwitchSection pulse={currencyPulse}>
+          <button
+            type="button"
+            onClick={reset}
+            data-html2canvas-ignore="true"
+            className="w-full min-h-[38px] rounded-lg border border-[rgba(255,92,92,0.35)] bg-calc-surface text-calc-neg text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2 transition-all"
+          >
+            <RefreshCw size={14} />
+            <span>重置全部欄位</span>
+          </button>
+        </CurrencySwitchSection>
 
-        <button 
-          type="button" 
-          onClick={handleScreenshot}
-          data-html2canvas-ignore="true"
-          className="w-full min-h-[38px] rounded-lg border border-border bg-calc-surface text-muted-foreground hover:text-foreground text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:border-calc-source active:text-foreground transition-all mb-4"
-        >
-          <Camera size={14} />
-          <span>生成截圖</span>
-        </button>
+        <CurrencySwitchSection pulse={currencyPulse}>
+          <button
+            type="button"
+            onClick={handleScreenshot}
+            data-html2canvas-ignore="true"
+            className="w-full min-h-[38px] rounded-lg border border-border bg-calc-surface text-muted-foreground hover:text-foreground text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:border-calc-source active:text-foreground transition-all mb-4"
+          >
+            <Camera size={14} />
+            <span>生成截圖</span>
+          </button>
+        </CurrencySwitchSection>
 
       </div>
 
