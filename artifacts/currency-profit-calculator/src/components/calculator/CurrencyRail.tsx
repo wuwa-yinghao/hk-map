@@ -14,6 +14,8 @@ export function CurrencyRail({
   onSelect,
   onHover,
   onOpenManager,
+  managerHover,
+  onManagerHover,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -25,6 +27,8 @@ export function CurrencyRail({
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
   onOpenManager: () => void;
+  managerHover: boolean;
+  onManagerHover: (hovered: boolean) => void;
 }) {
   return (
     <AnimatePresence>
@@ -42,7 +46,7 @@ export function CurrencyRail({
           data-html2canvas-ignore="true"
           aria-label="浮動幣種切換"
         >
-          {currencies.map((currency) => {
+          {currencies.map((currency, index) => {
             const isActive = activeId === currency.id;
             const isHovered = hoverId === currency.id;
             const center = (currencies.length - 1) / 2;
@@ -60,6 +64,16 @@ export function CurrencyRail({
               <motion.button
                 key={currency.id}
                 type="button"
+                initial={{ opacity: 0, scale: 0.62, x: side === 'left' ? -18 : 18 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.62, x: side === 'left' ? -18 : 18 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 420,
+                  damping: 20,
+                  mass: 0.72,
+                  delay: index * 0.055,
+                }}
                 whileTap={{ scale: 0.88 }}
                 onPointerEnter={() => {
                   onHover(currency.id);
@@ -101,14 +115,41 @@ export function CurrencyRail({
 
           <motion.button
             type="button"
+            initial={{ opacity: 0, scale: 0.62, y: 12 }}
+            animate={{ opacity: 1, scale: managerHover ? 1.08 : 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.62, y: 12 }}
+            transition={{
+              type: 'spring',
+              stiffness: 420,
+              damping: 20,
+              mass: 0.72,
+              delay: currencies.length * 0.055,
+            }}
             whileTap={{ scale: 0.88 }}
             onClick={() => {
               onHover(null);
+              onManagerHover(false);
               onClose();
               onOpenManager();
             }}
-            onPointerEnter={() => onHover(null)}
-            className="pointer-events-auto absolute bottom-[-12px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-calc-surface2 text-muted-foreground shadow-[0_6px_18px_rgba(0,0,0,0.4)] transition-colors hover:border-primary hover:text-primary"
+            onPointerUp={() => {
+              onHover(null);
+              onManagerHover(false);
+              onClose();
+              onOpenManager();
+            }}
+            onPointerEnter={() => {
+              onHover(null);
+              onManagerHover(true);
+            }}
+            onPointerLeave={() => onManagerHover(false)}
+            className={cn(
+              'pointer-events-auto absolute bottom-[-12px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border text-muted-foreground shadow-[0_6px_18px_rgba(0,0,0,0.4)] transition-colors',
+              managerHover
+                ? 'border-primary bg-primary/15 text-primary shadow-[0_0_18px_rgba(76,158,255,0.32)]'
+                : 'border-border bg-calc-surface2 hover:border-primary hover:text-primary',
+            )}
+            data-manager-button="true"
             aria-label="管理幣種"
           >
             <Settings size={16} />

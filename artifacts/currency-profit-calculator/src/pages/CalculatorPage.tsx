@@ -35,6 +35,7 @@ export default function CalculatorPage() {
   const [railSide, setRailSide] = useState<'left' | 'right'>('left');
   const [railAnchorY, setRailAnchorY] = useState(300);
   const [hoverCurrencyId, setHoverCurrencyId] = useState<string | null>(null);
+  const [managerHover, setManagerHover] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
@@ -43,6 +44,7 @@ export default function CalculatorPage() {
   const railDismissTimerRef = useRef<number | null>(null);
   const currencyPulseTimerRef = useRef<number | null>(null);
   const previousActiveIdRef = useRef(activeId);
+  const managerTouchHoverRef = useRef(false);
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
@@ -99,6 +101,8 @@ export default function CalculatorPage() {
       // release. A tap on a closed edge handle must be allowed to finish
       // opening the rail without the same touchend immediately closing it.
       gestureRef.current.opening = isRailOpenRef.current;
+      managerTouchHoverRef.current = false;
+      setManagerHover(false);
       gestureRef.current.side =
         touch.clientX < 28 ? 'left' : touch.clientX > window.innerWidth - 28 ? 'right' : null;
     };
@@ -112,6 +116,18 @@ export default function CalculatorPage() {
       const diffY = y - startY;
 
       if (isRailOpenRef.current) {
+        const managerTarget = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-manager-button]');
+        const managerY = railAnchorY + 109;
+        const nearManagerByPosition =
+          Math.abs(y - managerY) <= 28 &&
+          (railSide === 'left' ? x <= 120 : x >= window.innerWidth - 120);
+        const isOverManager = Boolean(managerTarget) || nearManagerByPosition;
+        managerTouchHoverRef.current = isOverManager;
+        setManagerHover(isOverManager);
+        if (isOverManager) {
+          setHoverCurrencyId(null);
+          return;
+        }
         const currencyId = currencyAtPoint(x, y);
         setHoverCurrencyId(currencyId);
         if (currencyId) setActiveId(currencyId);
@@ -133,10 +149,14 @@ export default function CalculatorPage() {
 
     const onTouchEnd = () => {
       if (gestureRef.current.opening) {
+        const shouldOpenManager = managerTouchHoverRef.current;
         if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
         setHoverCurrencyId(null);
+        setManagerHover(false);
         setIsRailOpen(false);
+        if (shouldOpenManager) setIsManagerOpen(true);
       }
+      managerTouchHoverRef.current = false;
       gestureRef.current.startX = 0;
       gestureRef.current.startY = 0;
       gestureRef.current.side = null;
@@ -204,6 +224,7 @@ export default function CalculatorPage() {
     if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
     railDismissTimerRef.current = null;
     setHoverCurrencyId(null);
+    setManagerHover(false);
     setIsRailOpen(false);
   };
 
@@ -218,6 +239,8 @@ export default function CalculatorPage() {
     setRailSide(side);
     setRailAnchorY(Math.max(190, Math.min(window.innerHeight - 190, window.innerHeight / 2)));
     setHoverCurrencyId(null);
+    setManagerHover(false);
+    managerTouchHoverRef.current = false;
     setIsRailOpen(true);
     railDismissTimerRef.current = window.setTimeout(() => {
       setHoverCurrencyId(null);
@@ -506,7 +529,9 @@ export default function CalculatorPage() {
         side={railSide}
         anchorY={railAnchorY}
         onSelect={selectFloatingCurrency}
-          onHover={handleCurrencyHover}
+        onHover={handleCurrencyHover}
+        managerHover={managerHover}
+        onManagerHover={setManagerHover}
         onOpenManager={() => setIsManagerOpen(true)}
       />
       <CurrencyManager 
