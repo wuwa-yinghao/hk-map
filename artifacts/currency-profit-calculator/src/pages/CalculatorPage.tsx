@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Camera, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -32,41 +32,98 @@ export default function CalculatorPage() {
   const calc = useCalculations(state);
   
   const [isRailOpen, setIsRailOpen] = useState(false);
+  const [railSide, setRailSide] = useState<'left' | 'right'>('left');
+  const [railAnchorY, setRailAnchorY] = useState(300);
+  const [hoverCurrencyId, setHoverCurrencyId] = useState<string | null>(null);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+  const gestureRef = useRef({
+    startX: 0,
+    startY: 0,
+    side: null as 'left' | 'right' | null,
+    opening: false,
+  });
 
   useEffect(() => {
-    let startX = 0;
-    let startY = 0;
+    const menuHeight = () => Math.min(window.innerHeight - 28, (currencies.length + 2) * 58);
+    const clampAnchor = (y: number) => {
+      const half = menuHeight() / 2;
+      return Math.max(half + 14, Math.min(window.innerHeight - half - 14, y));
+    };
+
+    const currencyAtY = (y: number) => {
+      const itemCount = currencies.length + 2;
+      const itemHeight = 56;
+      const firstCenter = railAnchorY - ((itemCount - 1) * itemHeight) / 2;
+      let closestIndex = -1;
+      let closestDistance = 31;
+      for (let index = 0; index < currencies.length; index += 1) {
+        const distance = Math.abs(y - (firstCenter + index * itemHeight));
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = index;
+        }
+      }
+      return closestIndex >= 0 ? currencies[closestIndex].id : null;
+    };
     
     const onTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
+      const touch = e.touches[0];
+      gestureRef.current.startX = touch.clientX;
+      gestureRef.current.startY = touch.clientY;
+      gestureRef.current.opening = false;
+      gestureRef.current.side =
+        touch.clientX < 28 ? 'left' : touch.clientX > window.innerWidth - 28 ? 'right' : null;
     };
     
     const onTouchMove = (e: TouchEvent) => {
+      const { startX, startY, side } = gestureRef.current;
       if (!startX || !startY) return;
       const x = e.touches[0].clientX;
       const y = e.touches[0].clientY;
       const diffX = x - startX;
       const diffY = y - startY;
-      
-      if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
-        if (startX < 30 && diffX > 0) setIsRailOpen(true);
-        if (startX > window.innerWidth - 30 && diffX < 0) setIsRailOpen(true);
-        startX = 0;
-        startY = 0;
+
+      if (isRailOpen) {
+        setHoverCurrencyId(currencyAtY(y));
+        return;
       }
+
+      if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
+        const isOpeningFromLeft = side === 'left' && diffX > 0;
+        const isOpeningFromRight = side === 'right' && diffX < 0;
+        if (isOpeningFromLeft || isOpeningFromRight) {
+          gestureRef.current.opening = true;
+          setRailSide(side!);
+          setRailAnchorY(clampAnchor(startY));
+          setHoverCurrencyId(currencyAtY(startY));
+          setIsRailOpen(true);
+        }
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (isRailOpen && gestureRef.current.opening && hoverCurrencyId) {
+        setActiveId(hoverCurrencyId);
+        setHoverCurrencyId(null);
+        setIsRailOpen(false);
+      }
+      gestureRef.current.startX = 0;
+      gestureRef.current.startY = 0;
+      gestureRef.current.side = null;
+      gestureRef.current.opening = false;
     };
     
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
     return () => {
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
     };
-  }, []);
+  }, [currencies, hoverCurrencyId, isRailOpen, setActiveId]);
 
   const handleScreenshot = async () => {
     const src = await takeScreenshot('calculator-capture-area');
@@ -286,14 +343,24 @@ export default function CalculatorPage() {
       {/* Discoverability Handles */}
       <div 
         className="fixed inset-y-0 left-0 w-3 z-40 flex items-center justify-start group touch-none" 
-        onPointerDown={() => setIsRailOpen(true)}
+        onPointerDown={() => {
+          setRailSide('left');
+          setRailAnchorY(Math.max(190, Math.min(window.innerHeight - 190, window.innerHeight / 2)));
+          setHoverCurrencyId(null);
+          setIsRailOpen(true);
+        }}
         data-html2canvas-ignore="true"
       >
         <div className="w-1 h-12 bg-white/10 rounded-r-md group-hover:bg-white/20 transition-colors" />
       </div>
       <div 
         className="fixed inset-y-0 right-0 w-3 z-40 flex items-center justify-end group touch-none" 
-        onPointerDown={() => setIsRailOpen(true)}
+        onPointerDown={() => {
+          setRailSide('right');
+          setRailAnchorY(Math.max(190, Math.min(window.innerHeight - 190, window.innerHeight / 2)));
+          setHoverCurrencyId(null);
+          setIsRailOpen(true);
+        }}
         data-html2canvas-ignore="true"
       >
         <div className="w-1 h-12 bg-white/10 rounded-l-md group-hover:bg-white/20 transition-colors" />
@@ -304,7 +371,11 @@ export default function CalculatorPage() {
         onClose={() => setIsRailOpen(false)}
         currencies={currencies}
         activeId={activeId}
+        hoverId={hoverCurrencyId}
+        side={railSide}
+        anchorY={railAnchorY}
         onSelect={setActiveId}
+        onHover={setHoverCurrencyId}
         onOpenManager={() => setIsManagerOpen(true)}
       />
       <CurrencyManager 

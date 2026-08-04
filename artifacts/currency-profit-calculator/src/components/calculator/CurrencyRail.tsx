@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Settings, X } from 'lucide-react';
 import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
@@ -8,73 +8,112 @@ export function CurrencyRail({
   onClose,
   currencies,
   activeId,
+  hoverId,
+  side,
+  anchorY,
   onSelect,
-  onOpenManager
+  onHover,
+  onOpenManager,
 }: {
   isOpen: boolean;
   onClose: () => void;
   currencies: Currency[];
   activeId: string;
+  hoverId: string | null;
+  side: 'left' | 'right';
+  anchorY: number;
   onSelect: (id: string) => void;
+  onHover: (id: string | null) => void;
   onOpenManager: () => void;
 }) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-[#0A0C10]/60 backdrop-blur-sm z-[70] touch-none"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-            className="fixed top-0 left-0 bottom-0 w-[260px] bg-calc-surface border-r border-border z-[80] shadow-[10px_0_30px_rgba(0,0,0,0.5)] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-          >
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h2 className="font-semibold text-muted-foreground text-[13px] tracking-wider uppercase">切換幣種</h2>
-              <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto py-2 flex flex-col">
-              {currencies.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => { onSelect(c.id); onClose(); }}
-                  className={cn(
-                    "flex items-center justify-between w-full px-5 py-3.5 text-left transition-colors",
-                    activeId === c.id 
-                      ? "bg-primary/10 border-l-[3px] border-primary text-primary" 
-                      : "border-l-[3px] border-transparent text-muted-foreground hover:bg-calc-surface2 hover:text-foreground"
-                  )}
-                >
-                  <span className="font-mono font-bold text-[16px]">{c.code}</span>
-                  <span className="text-[13px] font-medium">{c.name}</span>
-                </button>
-              ))}
-            </div>
+        <motion.div
+          initial={{ opacity: 0, x: side === 'left' ? -92 : 92, scale: 0.88 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: side === 'left' ? -92 : 92, scale: 0.88 }}
+          transition={{ type: 'spring', damping: 23, stiffness: 300 }}
+          className={cn(
+            'fixed z-[80] flex -translate-y-1/2 flex-col items-center gap-2',
+            side === 'left' ? 'left-3' : 'right-3',
+          )}
+          style={{ top: `${anchorY}px` }}
+          data-html2canvas-ignore="true"
+          aria-label="浮動幣種切換"
+        >
+          <div className="pointer-events-none absolute inset-x-1/2 top-1/2 h-[calc(100%+24px)] w-px -translate-x-1/2 -translate-y-1/2 bg-primary/20" />
 
-            <div className="p-4 border-t border-border bg-calc-surface2/30">
-              <button 
+          {currencies.map((currency) => {
+            const isActive = activeId === currency.id;
+            const isHovered = hoverId === currency.id;
+
+            return (
+              <motion.button
+                key={currency.id}
+                type="button"
+                whileTap={{ scale: 0.88 }}
                 onClick={() => {
+                  onSelect(currency.id);
+                  onHover(null);
                   onClose();
-                  onOpenManager();
                 }}
-                className="w-full py-2.5 rounded-lg border border-border bg-calc-surface2 text-foreground text-[13px] font-semibold flex items-center justify-center gap-2 transition-all hover:border-primary hover:text-primary active:scale-95"
+                onPointerEnter={() => onHover(currency.id)}
+                onPointerLeave={() => onHover(null)}
+                className={cn(
+                  'relative flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-full border font-mono shadow-[0_6px_18px_rgba(0,0,0,0.45)] transition-colors',
+                  isActive || isHovered
+                    ? 'border-primary bg-primary text-primary-foreground shadow-[0_0_20px_rgba(76,158,255,0.42)]'
+                    : 'border-border bg-calc-surface text-muted-foreground hover:border-primary/70 hover:text-foreground',
+                )}
+                data-currency-id={currency.id}
+                aria-label={`切換至${currency.name} ${currency.code}`}
               >
-                <Settings size={16} />
-                管理自訂幣種
-              </button>
-            </div>
-          </motion.div>
-        </>
+                <span className="text-[11px] font-bold leading-none">{currency.code}</span>
+                <span className="mt-0.5 max-w-[42px] truncate font-sans text-[9px] leading-none">
+                  {currency.name}
+                </span>
+                {isHovered && (
+                  <span
+                    className={cn(
+                      'pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md border border-primary/30 bg-calc-surface px-2 py-1 font-sans text-[10px] text-foreground shadow-xl',
+                      side === 'left' ? 'left-[58px]' : 'right-[58px]',
+                    )}
+                  >
+                    {currency.name}
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.88 }}
+            onClick={() => {
+              onHover(null);
+              onClose();
+              onOpenManager();
+            }}
+            onPointerEnter={() => onHover(null)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-calc-surface2 text-muted-foreground shadow-[0_6px_18px_rgba(0,0,0,0.4)] transition-colors hover:border-primary hover:text-primary"
+            aria-label="管理幣種"
+          >
+            <Settings size={16} />
+          </motion.button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onHover(null);
+              onClose();
+            }}
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-border/80 bg-calc-surface text-muted-foreground shadow-lg transition-colors hover:text-foreground"
+            aria-label="關閉浮動幣種切換"
+          >
+            <X size={13} />
+          </button>
+        </motion.div>
       )}
     </AnimatePresence>
   );
