@@ -32,28 +32,27 @@ export function CurrencyRail({
   if (!isOpen) return null;
 
   const itemCount = currencies.length + 1;
+  const itemSpacing = 54;
+  const railHeight = Math.max(230, (itemCount - 1) * itemSpacing + 52);
   const center = (itemCount - 1) / 2;
-  const buttonSpacing = Math.min(46, 184 / Math.max(itemCount - 1, 1));
-  const arcRadius = 92;
-  const arcStep = Math.asin(buttonSpacing / arcRadius);
 
   const getPosition = (index: number) => {
-    const arcAngle = (index - center) * arcStep;
+    const offset = index - center;
     return {
       x: side === 'left'
-        ? 18 + arcRadius * Math.cos(arcAngle)
-        : 112 - arcRadius * Math.cos(arcAngle),
-      y: 115 + arcRadius * Math.sin(arcAngle),
+        ? 62 + Math.abs(offset) * 8
+        : 68 - Math.abs(offset) * 8,
+      y: railHeight / 2 + offset * itemSpacing,
     };
   };
 
   return (
     <div
       className={cn(
-        'fixed z-[80] h-[230px] w-[130px] -translate-y-1/2 pointer-events-none',
+        'fixed z-[80] w-[130px] -translate-y-1/2 pointer-events-none',
         side === 'left' ? 'left-0' : 'right-0',
       )}
-      style={{ top: `${anchorY}px` }}
+      style={{ top: `${anchorY}px`, height: `${railHeight}px` }}
       data-html2canvas-ignore="true"
       aria-label="浮動幣種切換"
     >
