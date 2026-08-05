@@ -42,8 +42,9 @@ export function useCurrencies() {
     localStorage.setItem('calc_active_currency', activeId);
   }, [activeId]);
 
-  const addCurrency = (code: string, name: string) => {
-    const newCur = { id: code.toLowerCase() + '_' + Date.now(), code, name, isDefault: false };
+  const addCurrency = (name: string) => {
+    const id = 'currency_' + Date.now();
+    const newCur = { id, code: id, name, isDefault: false };
     setCurrencies(prev => [...prev, newCur]);
     setActiveId(newCur.id);
   };
@@ -57,9 +58,9 @@ export function useCurrencies() {
     });
   };
 
-  const updateCurrency = (id: string, code: string, name: string) => {
+  const updateCurrency = (id: string, name: string) => {
     setCurrencies(prev => prev.map(currency => (
-      currency.id === id ? { ...currency, code, name } : currency
+      currency.id === id ? { ...currency, name } : currency
     )));
   };
 

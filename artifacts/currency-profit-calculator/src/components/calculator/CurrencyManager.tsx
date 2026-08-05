@@ -13,27 +13,22 @@ export function CurrencyManager({
   isOpen: boolean, 
   onClose: () => void,
   currencies: Currency[],
-  onAdd: (code: string, name: string) => void,
+  onAdd: (name: string) => void,
   onRemove: (id: string) => void,
-  onUpdate: (id: string, code: string, name: string) => void
+  onUpdate: (id: string, name: string) => void
 }) {
-  const [newCode, setNewCode] = useState('');
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
   const handleAdd = () => {
-    if (!newCode.trim() || !newName.trim()) {
-      setError('請輸入幣種代碼與名稱');
+    const name = newName.trim();
+    if (!name) {
+      setError('請輸入幣種名稱');
       return;
     }
-    if (currencies.some(c => c.code.toUpperCase() === newCode.trim().toUpperCase())) {
-      setError('該幣種代碼已存在');
-      return;
-    }
-    onAdd(newCode.trim().toUpperCase(), newName.trim());
-    setNewCode('');
+    onAdd(name);
     setNewName('');
     setError('');
   };
@@ -57,7 +52,7 @@ export function CurrencyManager({
       return;
     }
     const currency = currencies.find(c => c.id === editingId);
-    if (currency) onUpdate(currency.id, currency.code, name);
+    if (currency) onUpdate(currency.id, name);
     cancelEdit();
   };
 
@@ -149,21 +144,12 @@ export function CurrencyManager({
 
             <div className="p-4 border-t border-border bg-calc-surface2/50">
               <h4 className="text-[12px] font-medium text-muted-foreground mb-2">新增幣種</h4>
-              <div className="flex gap-2 mb-2">
-                <input 
-                  value={newCode}
-                  onChange={(e) => setNewCode(e.target.value)}
-                  placeholder="代碼"
-                  className="flex-1 w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary font-mono uppercase"
-                  maxLength={5}
-                />
-                <input 
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="名稱"
-                  className="flex-[1.5] w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary"
-                />
-              </div>
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="幣種名稱"
+                className="w-full mb-2 bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary"
+              />
               {error && (
                 <div className="flex items-center gap-1.5 text-calc-neg text-[11px] mb-2">
                   <AlertCircle size={12} />
