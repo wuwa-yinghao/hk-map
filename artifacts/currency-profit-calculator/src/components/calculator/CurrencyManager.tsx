@@ -21,7 +21,6 @@ export function CurrencyManager({
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editCode, setEditCode] = useState('');
   const [editName, setEditName] = useState('');
 
   const handleAdd = () => {
@@ -41,30 +40,24 @@ export function CurrencyManager({
 
   const beginEdit = (currency: Currency) => {
     setEditingId(currency.id);
-    setEditCode(currency.code);
     setEditName(currency.name);
     setError('');
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditCode('');
     setEditName('');
     setError('');
   };
 
   const saveEdit = () => {
-    const code = editCode.trim().toUpperCase();
     const name = editName.trim();
-    if (!code || !name) {
-      setError('請輸入幣種代碼與名稱');
+    if (!name) {
+      setError('請輸入幣種名稱');
       return;
     }
-    if (currencies.some(c => c.id !== editingId && c.code.toUpperCase() === code)) {
-      setError('該幣種代碼已存在');
-      return;
-    }
-    if (editingId) onUpdate(editingId, code, name);
+    const currency = currencies.find(c => c.id === editingId);
+    if (currency) onUpdate(currency.id, currency.code, name);
     cancelEdit();
   };
 
@@ -92,21 +85,13 @@ export function CurrencyManager({
                   <div key={c.id} className="bg-calc-surface2 border border-border rounded-lg px-3 py-2.5">
                     {editingId === c.id ? (
                       <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
-                          <input
-                            value={editCode}
-                            onChange={(e) => setEditCode(e.target.value)}
-                            aria-label="編輯幣種代碼"
-                            maxLength={5}
-                            className="w-[88px] bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary font-mono uppercase"
-                          />
-                          <input
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            aria-label="編輯幣種名稱"
-                            className="min-w-0 flex-1 bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary"
-                          />
-                        </div>
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          aria-label="編輯幣種名稱"
+                          autoFocus
+                          className="w-full bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary"
+                        />
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
