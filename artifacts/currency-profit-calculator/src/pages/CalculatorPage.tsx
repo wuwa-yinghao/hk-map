@@ -150,7 +150,7 @@ export default function CalculatorPage() {
         const managerY = railAnchorY + 109;
         const nearManagerByPosition =
           Math.abs(y - managerY) <= 28 &&
-          (railSide === 'left' ? x <= 120 : x >= window.innerWidth - 120);
+          (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
         const isOverManager = Boolean(managerTarget) || nearManagerByPosition;
         managerTouchHoverRef.current = isOverManager;
         setManagerHover(isOverManager);

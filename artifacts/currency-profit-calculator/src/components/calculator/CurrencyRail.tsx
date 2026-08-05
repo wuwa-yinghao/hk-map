@@ -132,12 +132,6 @@ export function CurrencyRail({
               onClose();
               onOpenManager();
             }}
-            onPointerUp={() => {
-              onHover(null);
-              onManagerHover(false);
-              onClose();
-              onOpenManager();
-            }}
             onPointerEnter={() => {
               onHover(null);
               onManagerHover(true);
@@ -150,11 +144,11 @@ export function CurrencyRail({
                 : 'border-border bg-calc-surface2 hover:border-primary hover:text-primary',
             )}
             data-manager-button="true"
-            aria-label="管理幣種"
+            aria-label="設置幣種"
+            title="設置幣種"
           >
             <Settings size={16} />
           </motion.button>
-
         </motion.div>
       )}
     </AnimatePresence>
