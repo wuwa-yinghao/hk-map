@@ -10,7 +10,7 @@ export type CalcState = {
   downRate: string;
 };
 
-const DEFAULT_CALC_STATE: CalcState = {
+export const DEFAULT_CALC_STATE: CalcState = {
   mode: 'deposit',
   amount: '200000',
   srcRate: '1',
@@ -53,6 +53,43 @@ export function useCalculatorState(currencyId: string) {
   }, []);
 
   return { state, updateField, reset };
+}
+
+export function calculateProfit(state: CalcState) {
+  const amountNum = parseFloat(state.amount) || 0;
+  const upPointNum = parseFloat(state.upPoint) || 0;
+  const upRateNum = parseFloat(state.upRate) || 1;
+  const downPointNum = parseFloat(state.downPoint) || 0;
+  const downRateNum = parseFloat(state.downRate) || 1;
+
+  const calcLeg = (amount: number, point: number, rate: number) => {
+    const pt = (100 - point) / 100;
+    return (amount * pt) / rate;
+  };
+
+  const upResult = calcLeg(amountNum, upPointNum, upRateNum);
+  const downResult = calcLeg(amountNum, downPointNum, downRateNum);
+  const diffAbsolute = state.mode === 'deposit'
+    ? upResult - downResult
+    : downResult - upResult;
+  const base = state.mode === 'deposit' ? upResult : downResult;
+  const diffPercent = base !== 0 ? (diffAbsolute / base) * 100 : 0;
+
+  return { upResult, downResult, diffAbsolute, diffPercent };
+}
+
+export function isCalcState(value: unknown): value is CalcState {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<CalcState>;
+  return (
+    (candidate.mode === 'deposit' || candidate.mode === 'withdraw') &&
+    typeof candidate.amount === 'string' &&
+    typeof candidate.srcRate === 'string' &&
+    typeof candidate.upPoint === 'string' &&
+    typeof candidate.upRate === 'string' &&
+    typeof candidate.downPoint === 'string' &&
+    typeof candidate.downRate === 'string'
+  );
 }
 
 export function useCalculations(state: CalcState) {

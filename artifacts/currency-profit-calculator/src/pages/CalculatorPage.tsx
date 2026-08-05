@@ -1,14 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Camera, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { RefreshCw, Camera, ChevronDown, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { takeScreenshot } from '@/lib/screenshot';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencies } from '@/hooks/use-currencies';
-import { useCalculatorState, useCalculations } from '@/hooks/use-calculator-state';
+import {
+  DEFAULT_CALC_STATE,
+  calculateProfit,
+  isCalcState,
+  useCalculatorState,
+  useCalculations,
+} from '@/hooks/use-calculator-state';
 import { Gauge } from '@/components/calculator/Gauge';
 import { PreviewModal } from '@/components/calculator/PreviewModal';
 import { CurrencyRail } from '@/components/calculator/CurrencyRail';
 import { CurrencyManager } from '@/components/calculator/CurrencyManager';
+import { ProfitSummaryModal, ProfitSummaryItem } from '@/components/calculator/ProfitSummaryModal';
 import { CalcCard, FieldRow, FormattedInput, NumberInput, DiffDisplay } from '@/components/calculator/shared';
 
 function AdjustButton({ onClick, children }: { onClick: () => void, children: React.ReactNode }) {
@@ -41,6 +48,40 @@ export default function CalculatorPage() {
   
   const { state, updateField, reset } = useCalculatorState(activeId);
   const calc = useCalculations(state);
+  const profitSummary = useMemo<ProfitSummaryItem[]>(() => (
+    currencies.flatMap((currency) => {
+      let currencyState = DEFAULT_CALC_STATE;
+
+      if (currency.id === activeId) {
+        currencyState = state;
+      } else {
+        const saved = localStorage.getItem(`calc_state_${currency.id}`);
+        if (saved) {
+          try {
+            const parsed: unknown = JSON.parse(saved);
+            if (!isCalcState(parsed)) return [];
+            currencyState = parsed;
+          } catch {
+            return [];
+          }
+        }
+      }
+
+      return [{
+        id: currency.id,
+        name: currency.name,
+        mode: currencyState.mode,
+        profit: calculateProfit(currencyState).diffAbsolute,
+      }];
+    })
+  ), [activeId, currencies, state]);
+  const totalProfit = useMemo(
+    () => profitSummary.reduce(
+      (sum, item) => sum + Number(item.profit.toFixed(3)),
+      0,
+    ),
+    [profitSummary],
+  );
   
   const [isRailOpen, setIsRailOpen] = useState(false);
   const [railSide, setRailSide] = useState<'left' | 'right'>('left');
@@ -48,6 +89,7 @@ export default function CalculatorPage() {
   const [hoverCurrencyId, setHoverCurrencyId] = useState<string | null>(null);
   const [managerHover, setManagerHover] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
+  const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const isRailOpenRef = useRef(false);
@@ -464,6 +506,18 @@ export default function CalculatorPage() {
         <CurrencySwitchSection>
           <button
             type="button"
+            onClick={() => setIsProfitSummaryOpen(true)}
+            data-html2canvas-ignore="true"
+            className="w-full min-h-[38px] rounded-lg border border-[rgba(47,209,128,0.35)] bg-calc-surface text-calc-pos text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2"
+          >
+            <TrendingUp size={14} />
+            <span>利潤統計</span>
+          </button>
+        </CurrencySwitchSection>
+
+        <CurrencySwitchSection>
+          <button
+            type="button"
             onClick={reset}
             data-html2canvas-ignore="true"
             className="w-full min-h-[38px] rounded-lg border border-[rgba(255,92,92,0.35)] bg-calc-surface text-calc-neg text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2"
@@ -535,6 +589,12 @@ export default function CalculatorPage() {
         onRemove={removeCurrency}
         onUpdate={updateCurrency}
         onMove={moveCurrency}
+      />
+      <ProfitSummaryModal
+        isOpen={isProfitSummaryOpen}
+        onClose={() => setIsProfitSummaryOpen(false)}
+        items={profitSummary}
+        total={totalProfit}
       />
       <PreviewModal 
         isOpen={!!screenshotSrc}
