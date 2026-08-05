@@ -1,4 +1,4 @@
-import { Settings, TrendingUp } from 'lucide-react';
+import { ArrowUpFromLine, Settings, TrendingUp } from 'lucide-react';
 import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
 
@@ -16,10 +16,13 @@ export function CurrencyRail({
   onHover,
   onOpenManager,
   onOpenProfitSummary,
+  onOpenUpstreamSummary,
   managerHover,
   onManagerHover,
   profitSummaryHover,
   onProfitSummaryHover,
+  upstreamSummaryHover,
+  onUpstreamSummaryHover,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -32,14 +35,17 @@ export function CurrencyRail({
   onHover: (id: string | null) => void;
   onOpenManager: () => void;
   onOpenProfitSummary: () => void;
+  onOpenUpstreamSummary: () => void;
   managerHover: boolean;
   onManagerHover: (hovered: boolean) => void;
   profitSummaryHover: boolean;
   onProfitSummaryHover: (hovered: boolean) => void;
+  upstreamSummaryHover: boolean;
+  onUpstreamSummaryHover: (hovered: boolean) => void;
 }) {
   if (!isOpen) return null;
 
-  const itemCount = currencies.length + 2;
+  const itemCount = currencies.length + 3;
   const itemSpacing = 54;
   const railHeight = Math.max(230, (itemCount - 1) * itemSpacing + 52);
   const center = (itemCount - 1) / 2;
@@ -126,12 +132,54 @@ export function CurrencyRail({
               onHover(null);
               onManagerHover(false);
               onProfitSummaryHover(false);
+              onUpstreamSummaryHover(false);
+              onClose();
+              onOpenUpstreamSummary();
+            }}
+            onPointerEnter={() => {
+              onHover(null);
+              onManagerHover(false);
+              onProfitSummaryHover(false);
+              onUpstreamSummaryHover(true);
+            }}
+            onPointerLeave={() => onUpstreamSummaryHover(false)}
+            className={cn(
+              'pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-calc-up leading-none shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+              RAIL_BUTTON_SIZE,
+              upstreamSummaryHover
+                ? 'border-calc-up bg-calc-up/25 text-calc-up shadow-[0_0_18px_rgba(96,165,250,0.38)]'
+                : 'border-calc-up/45 bg-calc-up/10',
+            )}
+            data-upstream-summary-button="true"
+            aria-label="查看上游金額統計"
+            title="上游統計"
+            style={{ left: `${x}px`, top: `${y}px` }}
+          >
+            <ArrowUpFromLine size={16} />
+          </button>
+        );
+      })()}
+
+      {(() => {
+        const { x, y } = getPosition(currencies.length + 1);
+        return (
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onHover(null);
+              onManagerHover(false);
+              onUpstreamSummaryHover(false);
+              onProfitSummaryHover(false);
               onClose();
               onOpenProfitSummary();
             }}
             onPointerEnter={() => {
               onHover(null);
               onManagerHover(false);
+              onUpstreamSummaryHover(false);
               onProfitSummaryHover(true);
             }}
             onPointerLeave={() => onProfitSummaryHover(false)}
@@ -153,7 +201,7 @@ export function CurrencyRail({
       })()}
 
       {(() => {
-        const { x, y } = getPosition(currencies.length + 1);
+        const { x, y } = getPosition(currencies.length + 2);
         return (
           <button
             type="button"
@@ -163,6 +211,7 @@ export function CurrencyRail({
               event.stopPropagation();
               onHover(null);
               onManagerHover(false);
+              onUpstreamSummaryHover(false);
               onProfitSummaryHover(false);
               onClose();
               onOpenManager();
@@ -170,6 +219,7 @@ export function CurrencyRail({
             onPointerEnter={() => {
               onHover(null);
               onManagerHover(true);
+              onUpstreamSummaryHover(false);
               onProfitSummaryHover(false);
             }}
             onPointerLeave={() => onManagerHover(false)}

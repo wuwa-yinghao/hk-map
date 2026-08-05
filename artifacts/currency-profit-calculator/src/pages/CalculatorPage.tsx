@@ -14,6 +14,7 @@ import { Gauge } from '@/components/calculator/Gauge';
 import { CurrencyRail } from '@/components/calculator/CurrencyRail';
 import { CurrencyManager } from '@/components/calculator/CurrencyManager';
 import { ProfitSummaryModal, ProfitSummaryItem } from '@/components/calculator/ProfitSummaryModal';
+import { UpstreamSummaryModal, UpstreamSummaryItem } from '@/components/calculator/UpstreamSummaryModal';
 import { CalcCard, FieldRow, FormattedInput, NumberInput, DiffDisplay } from '@/components/calculator/shared';
 
 function AdjustButton({ onClick, children }: { onClick: () => void, children: React.ReactNode }) {
@@ -80,6 +81,37 @@ export default function CalculatorPage() {
     ),
     [profitSummary],
   );
+  const upstreamSummary = useMemo<UpstreamSummaryItem[]>(() => (
+    currencies.flatMap((currency) => {
+      let currencyState = DEFAULT_CALC_STATE;
+
+      if (currency.id === activeId) {
+        currencyState = state;
+      } else {
+        const saved = localStorage.getItem(`calc_state_${currency.id}`);
+        if (saved) {
+          try {
+            const parsed: unknown = JSON.parse(saved);
+            if (!isCalcState(parsed)) return [];
+            currencyState = parsed;
+          } catch {
+            return [];
+          }
+        }
+      }
+
+      return [{
+        id: currency.id,
+        name: currency.name,
+        mode: currencyState.mode,
+        amount: calculateProfit(currencyState).upResult,
+      }];
+    })
+  ), [activeId, currencies, state]);
+  const totalUpstream = useMemo(
+    () => upstreamSummary.reduce((sum, item) => sum + Number(item.amount.toFixed(3)), 0),
+    [upstreamSummary],
+  );
   
   const [isRailOpen, setIsRailOpen] = useState(false);
   const [railSide, setRailSide] = useState<'left' | 'right'>('left');
@@ -87,13 +119,16 @@ export default function CalculatorPage() {
   const [hoverCurrencyId, setHoverCurrencyId] = useState<string | null>(null);
   const [managerHover, setManagerHover] = useState(false);
   const [profitSummaryHover, setProfitSummaryHover] = useState(false);
+  const [upstreamSummaryHover, setUpstreamSummaryHover] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(false);
+  const [isUpstreamSummaryOpen, setIsUpstreamSummaryOpen] = useState(false);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const isRailOpenRef = useRef(false);
   const railDismissTimerRef = useRef<number | null>(null);
   const managerTouchHoverRef = useRef(false);
   const profitSummaryTouchHoverRef = useRef(false);
+  const upstreamSummaryTouchHoverRef = useRef(false);
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
@@ -110,7 +145,7 @@ export default function CalculatorPage() {
   }, [isRailOpen]);
 
   useEffect(() => {
-     const railHeight = () => Math.max(230, currencies.length * 54 + 106);
+      const railHeight = () => Math.max(230, currencies.length * 54 + 160);
     const clampAnchor = (y: number) => {
       const half = Math.min((window.innerHeight - 28) / 2, railHeight() / 2);
       return Math.max(half + 14, Math.min(window.innerHeight - half - 14, y));
@@ -122,7 +157,7 @@ export default function CalculatorPage() {
 
       // A fingertip often sits just outside the visible circle while dragging.
       // Use the rail's fixed vertical rhythm as a forgiving touch target.
-        const itemCount = currencies.length + 2;
+        const itemCount = currencies.length + 3;
         const center = (itemCount - 1) / 2;
         const nearest = currencies
           .map((_, index) => ({
@@ -145,8 +180,10 @@ export default function CalculatorPage() {
       gestureRef.current.opening = isRailOpenRef.current;
       managerTouchHoverRef.current = false;
       profitSummaryTouchHoverRef.current = false;
+      upstreamSummaryTouchHoverRef.current = false;
       setManagerHover(false);
       setProfitSummaryHover(false);
+      setUpstreamSummaryHover(false);
       gestureRef.current.side =
         touch.clientX < 28 ? 'left' : touch.clientX > window.innerWidth - 28 ? 'right' : null;
     };
@@ -163,27 +200,40 @@ export default function CalculatorPage() {
         const target = document.elementFromPoint(x, y);
         const managerTarget = target?.closest<HTMLElement>('[data-manager-button]');
         const profitSummaryTarget = target?.closest<HTMLElement>('[data-profit-summary-button]');
-        const itemCount = currencies.length + 2;
+        const itemCount = currencies.length + 3;
         const center = (itemCount - 1) / 2;
         const profitSummaryY = railAnchorY + (currencies.length - center) * 54;
-        const managerY = railAnchorY + (currencies.length + 1 - center) * 54;
+        const upstreamSummaryY = profitSummaryY;
+        const profitSummaryTargetY = railAnchorY + (currencies.length + 1 - center) * 54;
+        const managerY = railAnchorY + (currencies.length + 2 - center) * 54;
+        const upstreamSummaryTarget = target?.closest<HTMLElement>('[data-upstream-summary-button]');
         const nearManagerByPosition =
           Math.abs(y - managerY) <= 28 &&
           (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
+        const nearUpstreamSummaryByPosition =
+          Math.abs(y - upstreamSummaryY) <= 28 &&
+          (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
         const nearProfitSummaryByPosition =
-          Math.abs(y - profitSummaryY) <= 28 &&
+          Math.abs(y - profitSummaryTargetY) <= 28 &&
           (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
         const isOverManager = Boolean(managerTarget) || nearManagerByPosition;
+        const isOverUpstreamSummary = Boolean(upstreamSummaryTarget) || nearUpstreamSummaryByPosition;
         const isOverProfitSummary = Boolean(profitSummaryTarget) || nearProfitSummaryByPosition;
         managerTouchHoverRef.current = isOverManager;
+        upstreamSummaryTouchHoverRef.current = isOverUpstreamSummary;
         profitSummaryTouchHoverRef.current = isOverProfitSummary;
         setManagerHover(isOverManager);
+        setUpstreamSummaryHover(isOverUpstreamSummary);
         setProfitSummaryHover(isOverProfitSummary);
         if (isOverManager) {
           setHoverCurrencyId(null);
           return;
         }
         if (isOverProfitSummary) {
+          setHoverCurrencyId(null);
+          return;
+        }
+        if (isOverUpstreamSummary) {
           setHoverCurrencyId(null);
           return;
         }
@@ -210,16 +260,20 @@ export default function CalculatorPage() {
       if (gestureRef.current.opening) {
         const shouldOpenManager = managerTouchHoverRef.current;
         const shouldOpenProfitSummary = profitSummaryTouchHoverRef.current;
+        const shouldOpenUpstreamSummary = upstreamSummaryTouchHoverRef.current;
         if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
         setHoverCurrencyId(null);
         setManagerHover(false);
         setProfitSummaryHover(false);
+        setUpstreamSummaryHover(false);
         setIsRailOpen(false);
         if (shouldOpenManager) setIsManagerOpen(true);
         if (shouldOpenProfitSummary) setIsProfitSummaryOpen(true);
+        if (shouldOpenUpstreamSummary) setIsUpstreamSummaryOpen(true);
       }
       managerTouchHoverRef.current = false;
       profitSummaryTouchHoverRef.current = false;
+      upstreamSummaryTouchHoverRef.current = false;
       gestureRef.current.startX = 0;
       gestureRef.current.startY = 0;
       gestureRef.current.side = null;
@@ -289,6 +343,7 @@ export default function CalculatorPage() {
     setHoverCurrencyId(null);
     setManagerHover(false);
     setProfitSummaryHover(false);
+    setUpstreamSummaryHover(false);
     setIsRailOpen(false);
   };
 
@@ -303,7 +358,7 @@ export default function CalculatorPage() {
     setRailSide(side);
     const railHalfHeight = Math.min(
       (window.innerHeight - 28) / 2,
-      Math.max(230, currencies.length * 54 + 106) / 2,
+      Math.max(230, currencies.length * 54 + 160) / 2,
     );
     setRailAnchorY(Math.max(railHalfHeight + 14, Math.min(window.innerHeight - railHalfHeight - 14, window.innerHeight / 2)));
     setHoverCurrencyId(null);
@@ -311,6 +366,7 @@ export default function CalculatorPage() {
     setProfitSummaryHover(false);
     managerTouchHoverRef.current = false;
     profitSummaryTouchHoverRef.current = false;
+    upstreamSummaryTouchHoverRef.current = false;
     setIsRailOpen(true);
     railDismissTimerRef.current = window.setTimeout(() => {
       setHoverCurrencyId(null);
@@ -571,6 +627,9 @@ export default function CalculatorPage() {
         profitSummaryHover={profitSummaryHover}
         onProfitSummaryHover={setProfitSummaryHover}
         onOpenProfitSummary={() => setIsProfitSummaryOpen(true)}
+        upstreamSummaryHover={upstreamSummaryHover}
+        onUpstreamSummaryHover={setUpstreamSummaryHover}
+        onOpenUpstreamSummary={() => setIsUpstreamSummaryOpen(true)}
       />
       <CurrencyManager 
         isOpen={isManagerOpen}
@@ -586,6 +645,12 @@ export default function CalculatorPage() {
         onClose={() => setIsProfitSummaryOpen(false)}
         items={profitSummary}
         total={totalProfit}
+      />
+      <UpstreamSummaryModal
+        isOpen={isUpstreamSummaryOpen}
+        onClose={() => setIsUpstreamSummaryOpen(false)}
+        items={upstreamSummary}
+        total={totalUpstream}
       />
     </div>
   );
