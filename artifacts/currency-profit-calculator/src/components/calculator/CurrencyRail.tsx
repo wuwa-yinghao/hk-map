@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react';
+import { Settings, TrendingUp } from 'lucide-react';
 import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
 
@@ -13,8 +13,11 @@ export function CurrencyRail({
   onSelect,
   onHover,
   onOpenManager,
+  onOpenProfitSummary,
   managerHover,
   onManagerHover,
+  profitSummaryHover,
+  onProfitSummaryHover,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -26,12 +29,15 @@ export function CurrencyRail({
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
   onOpenManager: () => void;
+  onOpenProfitSummary: () => void;
   managerHover: boolean;
   onManagerHover: (hovered: boolean) => void;
+  profitSummaryHover: boolean;
+  onProfitSummaryHover: (hovered: boolean) => void;
 }) {
   if (!isOpen) return null;
 
-  const itemCount = currencies.length + 1;
+  const itemCount = currencies.length + 2;
   const itemSpacing = 54;
   const railHeight = Math.max(230, (itemCount - 1) * itemSpacing + 52);
   const center = (itemCount - 1) / 2;
@@ -116,19 +122,58 @@ export function CurrencyRail({
               event.stopPropagation();
               onHover(null);
               onManagerHover(false);
+              onProfitSummaryHover(false);
+              onClose();
+              onOpenProfitSummary();
+            }}
+            onPointerEnter={() => {
+              onHover(null);
+              onManagerHover(false);
+              onProfitSummaryHover(true);
+            }}
+            onPointerLeave={() => onProfitSummaryHover(false)}
+            className={cn(
+              'pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-calc-pos shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+              profitSummaryHover
+                ? 'border-calc-pos bg-calc-pos/25 text-calc-pos shadow-[0_0_18px_rgba(47,209,128,0.38)]'
+                : 'border-calc-pos/45 bg-calc-pos/10',
+            )}
+            data-profit-summary-button="true"
+            aria-label="查看利潤統計"
+            title="利潤統計"
+            style={{ left: `${x}px`, top: `${y}px` }}
+          >
+            <TrendingUp size={16} />
+          </button>
+        );
+      })()}
+
+      {(() => {
+        const { x, y } = getPosition(currencies.length + 1);
+        return (
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onHover(null);
+              onManagerHover(false);
+              onProfitSummaryHover(false);
               onClose();
               onOpenManager();
             }}
             onPointerEnter={() => {
               onHover(null);
               onManagerHover(true);
+              onProfitSummaryHover(false);
             }}
             onPointerLeave={() => onManagerHover(false)}
             className={cn(
-              'pointer-events-auto absolute flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-muted-foreground shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+              'pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-violet-300 shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
               managerHover
-                ? 'border-primary bg-primary/15 text-primary shadow-[0_0_18px_rgba(76,158,255,0.32)]'
-                : 'border-border bg-calc-surface2',
+                ? 'border-violet-300 bg-violet-400/25 text-violet-200 shadow-[0_0_18px_rgba(167,139,250,0.38)]'
+                : 'border-violet-400/45 bg-violet-400/10',
             )}
             data-manager-button="true"
             aria-label="設置幣種"

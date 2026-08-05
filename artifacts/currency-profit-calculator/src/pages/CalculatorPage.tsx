@@ -1,18 +1,16 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { RefreshCw, Camera, ChevronDown, TrendingUp } from 'lucide-react';
+import { RefreshCw, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { takeScreenshot } from '@/lib/screenshot';
-import { useToast } from '@/hooks/use-toast';
 import { useCurrencies } from '@/hooks/use-currencies';
 import {
   DEFAULT_CALC_STATE,
+  SETTLEMENT_CURRENCY,
   calculateProfit,
   isCalcState,
   useCalculatorState,
   useCalculations,
 } from '@/hooks/use-calculator-state';
 import { Gauge } from '@/components/calculator/Gauge';
-import { PreviewModal } from '@/components/calculator/PreviewModal';
 import { CurrencyRail } from '@/components/calculator/CurrencyRail';
 import { CurrencyManager } from '@/components/calculator/CurrencyManager';
 import { ProfitSummaryModal, ProfitSummaryItem } from '@/components/calculator/ProfitSummaryModal';
@@ -42,7 +40,6 @@ function CurrencySwitchSection({
 }
 
 export default function CalculatorPage() {
-  const { toast } = useToast();
   const { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency, moveCurrency } = useCurrencies();
   const activeCurrency = currencies.find(c => c.id === activeId) || currencies[0];
   
@@ -72,6 +69,7 @@ export default function CalculatorPage() {
         name: currency.name,
         mode: currencyState.mode,
         profit: calculateProfit(currencyState).diffAbsolute,
+        settlementCurrency: SETTLEMENT_CURRENCY,
       }];
     })
   ), [activeId, currencies, state]);
@@ -88,13 +86,14 @@ export default function CalculatorPage() {
   const [railAnchorY, setRailAnchorY] = useState(300);
   const [hoverCurrencyId, setHoverCurrencyId] = useState<string | null>(null);
   const [managerHover, setManagerHover] = useState(false);
+  const [profitSummaryHover, setProfitSummaryHover] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(false);
-  const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const isRailOpenRef = useRef(false);
   const railDismissTimerRef = useRef<number | null>(null);
   const managerTouchHoverRef = useRef(false);
+  const profitSummaryTouchHoverRef = useRef(false);
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
@@ -111,7 +110,7 @@ export default function CalculatorPage() {
   }, [isRailOpen]);
 
   useEffect(() => {
-    const railHeight = () => Math.max(230, currencies.length * 54 + 52);
+     const railHeight = () => Math.max(230, currencies.length * 54 + 106);
     const clampAnchor = (y: number) => {
       const half = Math.min((window.innerHeight - 28) / 2, railHeight() / 2);
       return Math.max(half + 14, Math.min(window.innerHeight - half - 14, y));
@@ -123,7 +122,7 @@ export default function CalculatorPage() {
 
       // A fingertip often sits just outside the visible circle while dragging.
       // Use the rail's fixed vertical rhythm as a forgiving touch target.
-        const itemCount = currencies.length + 1;
+        const itemCount = currencies.length + 2;
         const center = (itemCount - 1) / 2;
         const nearest = currencies
           .map((_, index) => ({
@@ -145,7 +144,9 @@ export default function CalculatorPage() {
       // opening the rail without the same touchend immediately closing it.
       gestureRef.current.opening = isRailOpenRef.current;
       managerTouchHoverRef.current = false;
+      profitSummaryTouchHoverRef.current = false;
       setManagerHover(false);
+      setProfitSummaryHover(false);
       gestureRef.current.side =
         touch.clientX < 28 ? 'left' : touch.clientX > window.innerWidth - 28 ? 'right' : null;
     };
@@ -159,17 +160,30 @@ export default function CalculatorPage() {
       const diffY = y - startY;
 
       if (isRailOpenRef.current) {
-        const managerTarget = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-manager-button]');
-        const itemCount = currencies.length + 1;
+        const target = document.elementFromPoint(x, y);
+        const managerTarget = target?.closest<HTMLElement>('[data-manager-button]');
+        const profitSummaryTarget = target?.closest<HTMLElement>('[data-profit-summary-button]');
+        const itemCount = currencies.length + 2;
         const center = (itemCount - 1) / 2;
-        const managerY = railAnchorY + (currencies.length - center) * 54;
+        const profitSummaryY = railAnchorY + (currencies.length - center) * 54;
+        const managerY = railAnchorY + (currencies.length + 1 - center) * 54;
         const nearManagerByPosition =
           Math.abs(y - managerY) <= 28 &&
           (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
+        const nearProfitSummaryByPosition =
+          Math.abs(y - profitSummaryY) <= 28 &&
+          (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
         const isOverManager = Boolean(managerTarget) || nearManagerByPosition;
+        const isOverProfitSummary = Boolean(profitSummaryTarget) || nearProfitSummaryByPosition;
         managerTouchHoverRef.current = isOverManager;
+        profitSummaryTouchHoverRef.current = isOverProfitSummary;
         setManagerHover(isOverManager);
+        setProfitSummaryHover(isOverProfitSummary);
         if (isOverManager) {
+          setHoverCurrencyId(null);
+          return;
+        }
+        if (isOverProfitSummary) {
           setHoverCurrencyId(null);
           return;
         }
@@ -195,13 +209,17 @@ export default function CalculatorPage() {
     const onTouchEnd = () => {
       if (gestureRef.current.opening) {
         const shouldOpenManager = managerTouchHoverRef.current;
+        const shouldOpenProfitSummary = profitSummaryTouchHoverRef.current;
         if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
         setHoverCurrencyId(null);
         setManagerHover(false);
+        setProfitSummaryHover(false);
         setIsRailOpen(false);
         if (shouldOpenManager) setIsManagerOpen(true);
+        if (shouldOpenProfitSummary) setIsProfitSummaryOpen(true);
       }
       managerTouchHoverRef.current = false;
+      profitSummaryTouchHoverRef.current = false;
       gestureRef.current.startX = 0;
       gestureRef.current.startY = 0;
       gestureRef.current.side = null;
@@ -223,7 +241,7 @@ export default function CalculatorPage() {
       window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [currencies, railAnchorY, setActiveId]);
+     }, [currencies, railAnchorY, setActiveId]);
 
   useEffect(() => {
     if (!isRailOpen) return;
@@ -270,6 +288,7 @@ export default function CalculatorPage() {
     railDismissTimerRef.current = null;
     setHoverCurrencyId(null);
     setManagerHover(false);
+    setProfitSummaryHover(false);
     setIsRailOpen(false);
   };
 
@@ -284,12 +303,14 @@ export default function CalculatorPage() {
     setRailSide(side);
     const railHalfHeight = Math.min(
       (window.innerHeight - 28) / 2,
-      Math.max(230, currencies.length * 54 + 52) / 2,
+      Math.max(230, currencies.length * 54 + 106) / 2,
     );
     setRailAnchorY(Math.max(railHalfHeight + 14, Math.min(window.innerHeight - railHalfHeight - 14, window.innerHeight / 2)));
     setHoverCurrencyId(null);
     setManagerHover(false);
+    setProfitSummaryHover(false);
     managerTouchHoverRef.current = false;
+    profitSummaryTouchHoverRef.current = false;
     setIsRailOpen(true);
     railDismissTimerRef.current = window.setTimeout(() => {
       setHoverCurrencyId(null);
@@ -300,15 +321,6 @@ export default function CalculatorPage() {
   useEffect(() => () => {
     if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
   }, []);
-
-  const handleScreenshot = async () => {
-    const src = await takeScreenshot('calculator-capture-area');
-    if (src) {
-      setScreenshotSrc(src);
-    } else {
-      toast({ description: "截圖生成失敗", variant: "destructive" });
-    }
-  };
 
   const toggleSign = (field: 'upPoint' | 'downPoint') => {
     const current = parseFloat(state[field]) || 0;
@@ -506,36 +518,12 @@ export default function CalculatorPage() {
         <CurrencySwitchSection>
           <button
             type="button"
-            onClick={() => setIsProfitSummaryOpen(true)}
-            data-html2canvas-ignore="true"
-            className="w-full min-h-[38px] rounded-lg border border-[rgba(47,209,128,0.35)] bg-calc-surface text-calc-pos text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2"
-          >
-            <TrendingUp size={14} />
-            <span>利潤統計</span>
-          </button>
-        </CurrencySwitchSection>
-
-        <CurrencySwitchSection>
-          <button
-            type="button"
             onClick={reset}
             data-html2canvas-ignore="true"
             className="w-full min-h-[38px] rounded-lg border border-[rgba(255,92,92,0.35)] bg-calc-surface text-calc-neg text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2"
           >
             <RefreshCw size={14} />
             <span>重置全部欄位</span>
-          </button>
-        </CurrencySwitchSection>
-
-        <CurrencySwitchSection>
-          <button
-            type="button"
-            onClick={handleScreenshot}
-            data-html2canvas-ignore="true"
-            className="w-full min-h-[38px] rounded-lg border border-border bg-calc-surface text-muted-foreground hover:text-foreground text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:border-calc-source active:text-foreground mb-4"
-          >
-            <Camera size={14} />
-            <span>生成截圖</span>
           </button>
         </CurrencySwitchSection>
 
@@ -580,6 +568,9 @@ export default function CalculatorPage() {
         managerHover={managerHover}
         onManagerHover={setManagerHover}
         onOpenManager={() => setIsManagerOpen(true)}
+        profitSummaryHover={profitSummaryHover}
+        onProfitSummaryHover={setProfitSummaryHover}
+        onOpenProfitSummary={() => setIsProfitSummaryOpen(true)}
       />
       <CurrencyManager 
         isOpen={isManagerOpen}
@@ -595,11 +586,6 @@ export default function CalculatorPage() {
         onClose={() => setIsProfitSummaryOpen(false)}
         items={profitSummary}
         total={totalProfit}
-      />
-      <PreviewModal 
-        isOpen={!!screenshotSrc}
-        imageSrc={screenshotSrc}
-        onClose={() => setScreenshotSrc(null)}
       />
     </div>
   );

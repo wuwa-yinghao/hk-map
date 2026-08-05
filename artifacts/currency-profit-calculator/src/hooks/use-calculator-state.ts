@@ -10,6 +10,8 @@ export type CalcState = {
   downRate: string;
 };
 
+export const SETTLEMENT_CURRENCY = 'USDT' as const;
+
 export const DEFAULT_CALC_STATE: CalcState = {
   mode: 'deposit',
   amount: '200000',
@@ -75,7 +77,16 @@ export function calculateProfit(state: CalcState) {
   const base = state.mode === 'deposit' ? upResult : downResult;
   const diffPercent = base !== 0 ? (diffAbsolute / base) * 100 : 0;
 
-  return { upResult, downResult, diffAbsolute, diffPercent };
+  return {
+    upResult,
+    downResult,
+    diffAbsolute,
+    diffPercent,
+    // Both upstream and downstream results are already settled in USDT by
+    // the calculator's input contract, so aggregation must not convert them
+    // a second time using srcRate.
+    settlementCurrency: SETTLEMENT_CURRENCY,
+  };
 }
 
 export function isCalcState(value: unknown): value is CalcState {

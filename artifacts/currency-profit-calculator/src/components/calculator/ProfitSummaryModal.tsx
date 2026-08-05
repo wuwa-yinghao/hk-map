@@ -6,6 +6,7 @@ export type ProfitSummaryItem = {
   name: string;
   profit: number;
   mode: 'deposit' | 'withdraw';
+  settlementCurrency: 'USDT';
 };
 
 export function ProfitSummaryModal({
@@ -85,7 +86,7 @@ export function ProfitSummaryModal({
           </div>
 
           <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-            各幣種盈利皆以 USDT 結算，以上數字直接相加，未進行匯率換算。
+            各幣種盈利結果皆已是 USDT 結算值，總和直接相加，不會使用實時匯率重複換算。
           </p>
         </div>
       </div>
