@@ -50,7 +50,6 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
-
 :root, .dark {
   --background: 220 23% 5%;
   --foreground: 223 15% 95%;

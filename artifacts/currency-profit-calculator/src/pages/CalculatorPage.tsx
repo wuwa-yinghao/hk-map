@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Camera, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { takeScreenshot } from '@/lib/screenshot';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +15,7 @@ function AdjustButton({ onClick, children }: { onClick: () => void, children: Re
   return (
     <button 
       onClick={onClick}
-      className="flex-1 py-1.5 px-0.5 rounded-md border border-border bg-calc-surface2 text-foreground font-mono text-[11.5px] font-semibold flex items-center justify-center transition-all active:scale-95 active:border-calc-down active:text-calc-down"
+      className="flex-1 py-1.5 px-0.5 rounded-md border border-border bg-calc-surface2 text-foreground font-mono text-[11.5px] font-semibold flex items-center justify-center active:border-calc-down active:text-calc-down"
     >
       {children}
     </button>
@@ -24,32 +23,14 @@ function AdjustButton({ onClick, children }: { onClick: () => void, children: Re
 }
 
 function CurrencySwitchSection({
-  pulse,
   className,
   children,
 }: {
-  pulse: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <motion.div
-      className={className}
-      animate={pulse ? {
-        scale: [1, 1.018, 1],
-        boxShadow: [
-          '0 8px 24px rgba(0,0,0,0.3)',
-          '0 0 26px rgba(76,158,255,0.38)',
-          '0 8px 24px rgba(0,0,0,0.3)',
-        ],
-      } : {
-        scale: 1,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-      }}
-      transition={{ duration: 0.52, ease: 'easeOut' }}
-    >
-      {children}
-    </motion.div>
+    <div className={className}>{children}</div>
   );
 }
 
@@ -69,11 +50,8 @@ export default function CalculatorPage() {
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
-  const [currencyPulse, setCurrencyPulse] = useState(false);
   const isRailOpenRef = useRef(false);
   const railDismissTimerRef = useRef<number | null>(null);
-  const currencyPulseTimerRef = useRef<number | null>(null);
-  const previousActiveIdRef = useRef(activeId);
   const managerTouchHoverRef = useRef(false);
   const gestureRef = useRef({
     startX: 0,
@@ -89,21 +67,6 @@ export default function CalculatorPage() {
       railDismissTimerRef.current = null;
     }
   }, [isRailOpen]);
-
-  useEffect(() => {
-    if (previousActiveIdRef.current === activeId) return;
-    previousActiveIdRef.current = activeId;
-    setCurrencyPulse(true);
-    if (currencyPulseTimerRef.current) window.clearTimeout(currencyPulseTimerRef.current);
-    currencyPulseTimerRef.current = window.setTimeout(() => {
-      setCurrencyPulse(false);
-      currencyPulseTimerRef.current = null;
-    }, 520);
-
-    return () => {
-      if (currencyPulseTimerRef.current) window.clearTimeout(currencyPulseTimerRef.current);
-    };
-  }, [activeId]);
 
   useEffect(() => {
     const menuHeight = () => Math.min(window.innerHeight - 28, 230);
@@ -280,7 +243,6 @@ export default function CalculatorPage() {
 
   useEffect(() => () => {
     if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
-    if (currencyPulseTimerRef.current) window.clearTimeout(currencyPulseTimerRef.current);
   }, []);
 
   const handleScreenshot = async () => {
@@ -318,7 +280,6 @@ export default function CalculatorPage() {
         
         {/* Real-time Rate Accordion */}
         <CurrencySwitchSection
-          pulse={currencyPulse}
           className="border border-border rounded-[10px] bg-calc-surface2/40 overflow-hidden mb-0.5"
         >
           <div 
@@ -328,16 +289,10 @@ export default function CalculatorPage() {
             <h4 className="text-[12px] text-muted-foreground font-semibold flex items-center gap-1.5 before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-calc-source">
               實時匯率
             </h4>
-            <ChevronDown size={14} className={cn("text-muted-foreground transition-transform", isAccordionOpen && "rotate-180")} />
+            <ChevronDown size={14} className={cn("text-muted-foreground", isAccordionOpen && "rotate-180")} />
           </div>
-          <AnimatePresence>
-            {isAccordionOpen && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="px-2.5 pb-2.5 flex flex-col gap-2"
-              >
+          {isAccordionOpen && (
+              <div className="px-2.5 pb-2.5 flex flex-col gap-2">
                 <CalcCard variant="source" title="實時匯率">
                   <FieldRow label="金額" variant="source">
                     <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} />
@@ -359,14 +314,13 @@ export default function CalculatorPage() {
                     <span>−50%</span><span>0</span><span>+50%</span>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+          )}
         </CurrencySwitchSection>
 
         {/* Upstream Card */}
         <div className="flex flex-col gap-2">
-          <CurrencySwitchSection pulse={currencyPulse}>
+          <CurrencySwitchSection>
             <CalcCard variant="up" title="上游 (成本)">
             <FieldRow label="金額" variant="up">
               <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
@@ -380,7 +334,7 @@ export default function CalculatorPage() {
                 prefixButton={
                   <button 
                     onClick={() => toggleSign('upPoint')}
-                    className="shrink-0 w-[22px] h-[22px] rounded border border-border bg-calc-surface text-muted-foreground font-mono text-xs font-semibold flex items-center justify-center mr-1 transition-all active:scale-90 active:border-calc-up active:text-calc-up"
+                    className="shrink-0 w-[22px] h-[22px] rounded border border-border bg-calc-surface text-muted-foreground font-mono text-xs font-semibold flex items-center justify-center mr-1 active:border-calc-up active:text-calc-up"
                   >±</button>
                 }
               />
@@ -396,7 +350,7 @@ export default function CalculatorPage() {
           </CurrencySwitchSection>
 
           {/* Downstream Card */}
-          <CurrencySwitchSection pulse={currencyPulse}>
+          <CurrencySwitchSection>
             <CalcCard variant="down" title="下游 (報價)">
             <FieldRow label="金額" variant="down">
               <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
@@ -410,7 +364,7 @@ export default function CalculatorPage() {
                 prefixButton={
                   <button 
                     onClick={() => toggleSign('downPoint')}
-                    className="shrink-0 w-[22px] h-[22px] rounded border border-border bg-calc-surface text-muted-foreground font-mono text-xs font-semibold flex items-center justify-center mr-1 transition-all active:scale-90 active:border-calc-down active:text-calc-down"
+                    className="shrink-0 w-[22px] h-[22px] rounded border border-border bg-calc-surface text-muted-foreground font-mono text-xs font-semibold flex items-center justify-center mr-1 active:border-calc-down active:text-calc-down"
                   >±</button>
                 }
               />
@@ -428,7 +382,6 @@ export default function CalculatorPage() {
 
         {/* Downstream Quick Adjust */}
         <CurrencySwitchSection
-          pulse={currencyPulse}
           className="bg-calc-surface border border-border rounded-[10px] p-2.5 px-3 flex flex-col gap-1.5"
         >
           <div className="flex items-center gap-1.5 mb-0.5">
@@ -455,25 +408,18 @@ export default function CalculatorPage() {
 
         {/* Main Dashboard */}
         <CurrencySwitchSection
-          pulse={currencyPulse}
           className="bg-gradient-to-b from-[#1C2130] to-[#12151D] border border-[rgba(76,158,255,0.25)] rounded-xl p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)] shrink-0 mt-1 mb-1"
         >
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[11px] tracking-wider text-muted-foreground font-semibold uppercase flex-1 text-center pl-10">
               上下游利潤分析 ({state.mode === 'deposit' ? '入金' : '出金'})
             </h3>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={activeId}
-                initial={{ opacity: 0, scale: 0.72, y: -4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 20 }}
-                className="text-[10px] font-mono bg-calc-surface2 text-muted-foreground px-2 py-0.5 rounded-full shrink-0 border border-border flex items-center justify-center min-w-[36px]"
-                aria-live="polite"
-              >
-                {activeCurrency.code}
-              </motion.div>
-            </AnimatePresence>
+            <div
+              className="text-[10px] font-mono bg-calc-surface2 text-muted-foreground px-2 py-0.5 rounded-full shrink-0 border border-border flex items-center justify-center min-w-[36px]"
+              aria-live="polite"
+            >
+              {activeCurrency.code}
+            </div>
           </div>
           <DiffDisplay absolute={calc.diffAbsolute} percent={calc.diffPercent} large />
           <Gauge diffAbsolute={calc.diffAbsolute} diffPercent={calc.diffPercent} />
@@ -483,20 +429,17 @@ export default function CalculatorPage() {
         </CurrencySwitchSection>
 
         {/* Mode Toggle */}
-        <CurrencySwitchSection
-          pulse={currencyPulse}
-          className="flex gap-1.5 bg-calc-surface/60 p-[3px] rounded-lg border border-border shrink-0"
-        >
+        <CurrencySwitchSection className="flex gap-1.5 bg-calc-surface/60 p-[3px] rounded-lg border border-border shrink-0">
           <button 
             onClick={() => updateField('mode', 'deposit')}
-            className={cn("flex-1 h-[34px] rounded-md text-[13.5px] font-bold tracking-wide transition-all", 
+            className={cn("flex-1 h-[34px] rounded-md text-[13.5px] font-bold tracking-wide",
               state.mode === 'deposit' ? "bg-calc-up text-background shadow-[0_2px_8px_rgba(76,158,255,0.3)]" : "text-muted-foreground")}
           >
             入金
           </button>
           <button 
             onClick={() => updateField('mode', 'withdraw')}
-            className={cn("flex-1 h-[34px] rounded-md text-[13.5px] font-bold tracking-wide transition-all", 
+            className={cn("flex-1 h-[34px] rounded-md text-[13.5px] font-bold tracking-wide",
               state.mode === 'withdraw' ? "bg-calc-down text-background shadow-[0_2px_8px_rgba(47,209,128,0.3)]" : "text-muted-foreground")}
           >
             出金
@@ -504,24 +447,24 @@ export default function CalculatorPage() {
         </CurrencySwitchSection>
 
         {/* Bottom Actions */}
-        <CurrencySwitchSection pulse={currencyPulse}>
+        <CurrencySwitchSection>
           <button
             type="button"
             onClick={reset}
             data-html2canvas-ignore="true"
-            className="w-full min-h-[38px] rounded-lg border border-[rgba(255,92,92,0.35)] bg-calc-surface text-calc-neg text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2 transition-all"
+            className="w-full min-h-[38px] rounded-lg border border-[rgba(255,92,92,0.35)] bg-calc-surface text-calc-neg text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2"
           >
             <RefreshCw size={14} />
             <span>重置全部欄位</span>
           </button>
         </CurrencySwitchSection>
 
-        <CurrencySwitchSection pulse={currencyPulse}>
+        <CurrencySwitchSection>
           <button
             type="button"
             onClick={handleScreenshot}
             data-html2canvas-ignore="true"
-            className="w-full min-h-[38px] rounded-lg border border-border bg-calc-surface text-muted-foreground hover:text-foreground text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:border-calc-source active:text-foreground transition-all mb-4"
+            className="w-full min-h-[38px] rounded-lg border border-border bg-calc-surface text-muted-foreground hover:text-foreground text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:border-calc-source active:text-foreground mb-4"
           >
             <Camera size={14} />
             <span>生成截圖</span>
@@ -541,7 +484,7 @@ export default function CalculatorPage() {
             aria-label="從左側開啟幣種浮球"
             data-html2canvas-ignore="true"
           >
-            <span className="h-12 w-1 rounded-r-md bg-white/10 transition-colors hover:bg-white/20" />
+            <span className="h-12 w-1 rounded-r-md bg-white/10" />
           </button>
           <button
             type="button"
@@ -551,7 +494,7 @@ export default function CalculatorPage() {
             aria-label="從右側開啟幣種浮球"
             data-html2canvas-ignore="true"
           >
-            <span className="h-12 w-1 rounded-l-md bg-white/10 transition-colors hover:bg-white/20" />
+            <span className="h-12 w-1 rounded-l-md bg-white/10" />
           </button>
         </>
       )}

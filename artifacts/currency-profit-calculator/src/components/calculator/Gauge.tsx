@@ -9,7 +9,7 @@ export function Gauge({ diffAbsolute, diffPercent }: { diffAbsolute: number, dif
       <div className="absolute top-[-2px] bottom-[-2px] left-1/2 w-px bg-muted-foreground opacity-60" />
       
       <div 
-        className="absolute top-0 bottom-0 rounded-full transition-all duration-300"
+        className="absolute top-0 bottom-0 rounded-full"
         style={{
           left: isPos ? '50%' : `${50 - Math.abs(travel)}%`,
           width: `${Math.abs(travel)}%`,
@@ -20,7 +20,7 @@ export function Gauge({ diffAbsolute, diffPercent }: { diffAbsolute: number, dif
       />
       
       <div 
-        className="absolute top-1/2 w-3 h-3 rounded-full bg-calc-surface border-[2.5px] shadow-sm transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
+        className="absolute top-1/2 w-3 h-3 rounded-full bg-calc-surface border-[2.5px] shadow-sm transform -translate-x-1/2 -translate-y-1/2"
         style={{
           left: `${50 + travel}%`,
           borderColor: diffAbsolute > 0 ? '#2FD180' : diffAbsolute < 0 ? '#FF5C5C' : '#565D70'

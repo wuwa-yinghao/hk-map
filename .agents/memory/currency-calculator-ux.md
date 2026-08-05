@@ -3,7 +3,7 @@ name: Currency calculator UX
 description: Durable product behavior for the multi-currency profit calculator.
 ---
 
-The calculator is a personal, mobile-first utility. Currency switching must change the active calculation context without changing any other currency's saved values; the four initial currencies are protected from deletion, while custom currencies may be removed. The floating rail exposes one settings action; adding and removing currencies belongs inside the manager opened by that action.
+The calculator is a personal, mobile-first utility. Currency switching must change the active calculation context without changing any other currency's saved values; every currency can be edited or removed except that the final remaining currency must be kept. The floating rail exposes one settings action; adding and removing currencies belongs inside the manager opened by that action.
 
 **Why:** The requested workflow is to calculate separate profits for several currencies without changing the original calculator's behavior.
 

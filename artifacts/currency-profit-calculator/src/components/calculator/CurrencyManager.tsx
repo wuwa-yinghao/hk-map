@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { X, Plus, AlertCircle, Check, Pencil, Trash2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Currency } from '@/hooks/use-currencies';
 
 export function CurrencyManager({ 
@@ -70,25 +69,19 @@ export function CurrencyManager({
   };
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-[calc(env(safe-area-inset-bottom)+16px)]">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-[#0A0C10]/80 backdrop-blur-sm"
+          <div
+            className="absolute inset-0 bg-[#0A0C10]/80"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          <div
             className="relative w-full max-w-sm bg-calc-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col"
           >
             <div className="p-4 border-b border-border flex items-center justify-between">
               <h3 className="font-semibold text-[15px]">管理幣種</h3>
-              <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground rounded-md transition-colors">
+              <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground rounded-md">
                 <X size={18} />
               </button>
             </div>
@@ -105,13 +98,13 @@ export function CurrencyManager({
                             onChange={(e) => setEditCode(e.target.value)}
                             aria-label="編輯幣種代碼"
                             maxLength={5}
-                            className="w-[88px] bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary transition-colors font-mono uppercase"
+                            className="w-[88px] bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary font-mono uppercase"
                           />
                           <input
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             aria-label="編輯幣種名稱"
-                            className="min-w-0 flex-1 bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary transition-colors"
+                            className="min-w-0 flex-1 bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                         <div className="flex justify-end gap-2">
@@ -144,7 +137,7 @@ export function CurrencyManager({
                             type="button"
                             onClick={() => beginEdit(c)}
                             aria-label={`編輯${c.name} ${c.code}`}
-                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                           >
                             <Pencil size={15} />
                           </button>
@@ -158,7 +151,7 @@ export function CurrencyManager({
                               onRemove(c.id);
                             }}
                             aria-label={`刪除${c.name} ${c.code}`}
-                            className="rounded-md p-1.5 text-calc-neg/80 transition-colors hover:bg-calc-neg/10 hover:text-calc-neg"
+                            className="rounded-md p-1.5 text-calc-neg/80 hover:bg-calc-neg/10 hover:text-calc-neg"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -177,14 +170,14 @@ export function CurrencyManager({
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
                   placeholder="代碼 (例: THB)"
-                  className="flex-1 w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary transition-colors font-mono uppercase"
+                  className="flex-1 w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary font-mono uppercase"
                   maxLength={5}
                 />
                 <input 
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="名稱 (例: 泰銖)"
-                  className="flex-[1.5] w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary transition-colors"
+                  className="flex-[1.5] w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary"
                 />
               </div>
               {error && (
@@ -195,15 +188,15 @@ export function CurrencyManager({
               )}
               <button 
                 onClick={handleAdd}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md font-semibold text-[13px] transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md font-semibold text-[13px]"
               >
                 <Plus size={16} />
                 <span>新增</span>
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }
