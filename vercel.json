@@ -1,0 +1,12 @@
+{
+  "buildCommand": "pnpm --filter @workspace/currency-profit-calculator run build",
+  "outputDirectory": "artifacts/currency-profit-calculator/dist/public",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
