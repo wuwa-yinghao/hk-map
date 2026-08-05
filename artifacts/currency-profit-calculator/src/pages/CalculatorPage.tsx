@@ -47,9 +47,7 @@ export default function CalculatorPage() {
   const [railAnchorY, setRailAnchorY] = useState(300);
   const [hoverCurrencyId, setHoverCurrencyId] = useState<string | null>(null);
   const [managerHover, setManagerHover] = useState(false);
-  const [isRailDeleteMode, setIsRailDeleteMode] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
-  const [managerStartsWithAdd, setManagerStartsWithAdd] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const isRailOpenRef = useRef(false);
@@ -83,7 +81,7 @@ export default function CalculatorPage() {
 
       // A fingertip often sits just outside the visible circle while dragging.
       // Use the curved buttons' vertical rhythm as a forgiving touch target.
-        const itemCount = currencies.length + 3;
+        const itemCount = currencies.length + 1;
         const buttonSpacing = Math.min(46, 184 / Math.max(itemCount - 1, 1));
         const center = (itemCount - 1) / 2;
         const arcStep = Math.asin(buttonSpacing / 92);
@@ -122,10 +120,10 @@ export default function CalculatorPage() {
 
       if (isRailOpenRef.current) {
         const managerTarget = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-manager-button]');
-        const itemCount = currencies.length + 3;
+        const itemCount = currencies.length + 1;
         const buttonSpacing = Math.min(46, 184 / Math.max(itemCount - 1, 1));
         const center = (itemCount - 1) / 2;
-        const managerAngle = (currencies.length + 2 - center) * Math.asin(buttonSpacing / 92);
+        const managerAngle = (currencies.length - center) * Math.asin(buttonSpacing / 92);
         const managerY = railAnchorY + 92 * Math.sin(managerAngle);
         const nearManagerByPosition =
           Math.abs(y - managerY) <= 28 &&
@@ -139,7 +137,7 @@ export default function CalculatorPage() {
         }
         const currencyId = currencyAtPoint(x, y);
         setHoverCurrencyId(currencyId);
-        if (currencyId && !isRailDeleteMode) setActiveId(currencyId);
+        if (currencyId) setActiveId(currencyId);
         return;
       }
 
@@ -187,7 +185,7 @@ export default function CalculatorPage() {
       window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [currencies, railAnchorY, setActiveId, isRailDeleteMode]);
+  }, [currencies, railAnchorY, setActiveId]);
 
   useEffect(() => {
     if (!isRailOpen) return;
@@ -234,7 +232,6 @@ export default function CalculatorPage() {
     railDismissTimerRef.current = null;
     setHoverCurrencyId(null);
     setManagerHover(false);
-    setIsRailDeleteMode(false);
     setIsRailOpen(false);
   };
 
@@ -250,37 +247,12 @@ export default function CalculatorPage() {
     setRailAnchorY(Math.max(164, Math.min(window.innerHeight - 164, window.innerHeight / 2)));
     setHoverCurrencyId(null);
     setManagerHover(false);
-    setIsRailDeleteMode(false);
     managerTouchHoverRef.current = false;
     setIsRailOpen(true);
     railDismissTimerRef.current = window.setTimeout(() => {
       setHoverCurrencyId(null);
       setIsRailOpen(false);
     }, 8000);
-  };
-
-  const toggleRailDeleteMode = () => {
-    if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
-    railDismissTimerRef.current = null;
-    setHoverCurrencyId(null);
-    setIsRailDeleteMode(current => {
-      const next = !current;
-      toast({
-        description: next ? '刪除模式已開啟：點選紅色自訂幣種即可刪除' : '已退出刪除模式',
-      });
-      return next;
-    });
-  };
-
-  const deleteCurrencyFromRail = (id: string) => {
-    const currency = currencies.find(item => item.id === id);
-    if (!currency || currency.isDefault) {
-      toast({ description: '預設幣種無法刪除', variant: 'destructive' });
-      return;
-    }
-    removeCurrency(id);
-    setHoverCurrencyId(null);
-    toast({ description: `已刪除${currency.name}` });
   };
 
   useEffect(() => () => {
@@ -553,31 +525,16 @@ export default function CalculatorPage() {
         onHover={handleCurrencyHover}
         managerHover={managerHover}
         onManagerHover={setManagerHover}
-        onOpenManager={() => {
-          setManagerStartsWithAdd(false);
-          setIsManagerOpen(true);
-        }}
-        onQuickAdd={() => {
-          closeFloatingCurrencies();
-          setManagerStartsWithAdd(true);
-          setIsManagerOpen(true);
-        }}
-        onToggleDeleteMode={toggleRailDeleteMode}
-        onDeleteCurrency={deleteCurrencyFromRail}
-        isDeleteMode={isRailDeleteMode}
+        onOpenManager={() => setIsManagerOpen(true)}
       />
       <CurrencyManager 
         isOpen={isManagerOpen}
-        onClose={() => {
-          setIsManagerOpen(false);
-          setManagerStartsWithAdd(false);
-        }}
+        onClose={() => setIsManagerOpen(false)}
         currencies={currencies}
         onAdd={addCurrency}
         onRemove={removeCurrency}
         onUpdate={updateCurrency}
         onMove={moveCurrency}
-        initialAdd={managerStartsWithAdd}
       />
       <PreviewModal 
         isOpen={!!screenshotSrc}
