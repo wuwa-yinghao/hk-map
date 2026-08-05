@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus, AlertCircle } from 'lucide-react';
+import { X, Plus, AlertCircle, Check, Pencil, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Currency } from '@/hooks/use-currencies';
 
@@ -8,17 +8,22 @@ export function CurrencyManager({
   onClose, 
   currencies, 
   onAdd, 
-  onRemove 
+  onRemove,
+  onUpdate,
 }: { 
   isOpen: boolean, 
   onClose: () => void,
   currencies: Currency[],
   onAdd: (code: string, name: string) => void,
-  onRemove: (id: string) => void
+  onRemove: (id: string) => void,
+  onUpdate: (id: string, code: string, name: string) => void
 }) {
   const [newCode, setNewCode] = useState('');
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCode, setEditCode] = useState('');
+  const [editName, setEditName] = useState('');
 
   const handleAdd = () => {
     if (!newCode.trim() || !newName.trim()) {
@@ -33,6 +38,35 @@ export function CurrencyManager({
     setNewCode('');
     setNewName('');
     setError('');
+  };
+
+  const beginEdit = (currency: Currency) => {
+    setEditingId(currency.id);
+    setEditCode(currency.code);
+    setEditName(currency.name);
+    setError('');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditCode('');
+    setEditName('');
+    setError('');
+  };
+
+  const saveEdit = () => {
+    const code = editCode.trim().toUpperCase();
+    const name = editName.trim();
+    if (!code || !name) {
+      setError('請輸入幣種代碼與名稱');
+      return;
+    }
+    if (currencies.some(c => c.id !== editingId && c.code.toUpperCase() === code)) {
+      setError('該幣種代碼已存在');
+      return;
+    }
+    if (editingId) onUpdate(editingId, code, name);
+    cancelEdit();
   };
 
   return (
@@ -62,18 +96,74 @@ export function CurrencyManager({
             <div className="p-4 flex-1 overflow-y-auto max-h-[45vh]">
               <div className="flex flex-col gap-2">
                 {currencies.map(c => (
-                  <div key={c.id} className="flex items-center justify-between bg-calc-surface2 border border-border rounded-lg px-3 py-2.5">
-                    <div>
-                      <span className="font-bold text-[14px] font-mono mr-2">{c.code}</span>
-                      <span className="text-[13px] text-muted-foreground">{c.name}</span>
-                    </div>
-                    {!c.isDefault && (
-                      <button 
-                        onClick={() => onRemove(c.id)}
-                        className="text-calc-neg/80 hover:text-calc-neg transition-colors p-1"
-                      >
-                        <X size={16} />
-                      </button>
+                  <div key={c.id} className="bg-calc-surface2 border border-border rounded-lg px-3 py-2.5">
+                    {editingId === c.id ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <input
+                            value={editCode}
+                            onChange={(e) => setEditCode(e.target.value)}
+                            aria-label="編輯幣種代碼"
+                            maxLength={5}
+                            className="w-[88px] bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary transition-colors font-mono uppercase"
+                          />
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            aria-label="編輯幣種名稱"
+                            className="min-w-0 flex-1 bg-calc-surface border border-border rounded-md px-2.5 py-2 text-[13px] outline-none focus:border-primary transition-colors"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                          >
+                            <X size={13} />
+                            取消
+                          </button>
+                          <button
+                            type="button"
+                            onClick={saveEdit}
+                            className="flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-[11px] font-semibold text-primary hover:bg-primary/20"
+                          >
+                            <Check size={13} />
+                            儲存
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="font-bold text-[14px] font-mono mr-2">{c.code}</span>
+                          <span className="text-[13px] text-muted-foreground">{c.name}</span>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => beginEdit(c)}
+                            aria-label={`編輯${c.name} ${c.code}`}
+                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (currencies.length === 1) {
+                                setError('至少保留一個幣種');
+                                return;
+                              }
+                              onRemove(c.id);
+                            }}
+                            aria-label={`刪除${c.name} ${c.code}`}
+                            className="rounded-md p-1.5 text-calc-neg/80 transition-colors hover:bg-calc-neg/10 hover:text-calc-neg"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}

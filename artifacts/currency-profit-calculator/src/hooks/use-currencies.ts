@@ -50,11 +50,18 @@ export function useCurrencies() {
 
   const removeCurrency = (id: string) => {
     setCurrencies(prev => {
-      const next = prev.filter(c => c.id !== id || c.isDefault);
-      if (activeId === id) setActiveId(next[0].id);
+      if (prev.length <= 1) return prev;
+      const next = prev.filter(c => c.id !== id);
+      if (activeId === id && next[0]) setActiveId(next[0].id);
       return next;
     });
   };
 
-  return { currencies, activeId, setActiveId, addCurrency, removeCurrency };
+  const updateCurrency = (id: string, code: string, name: string) => {
+    setCurrencies(prev => prev.map(currency => (
+      currency.id === id ? { ...currency, code, name } : currency
+    )));
+  };
+
+  return { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency };
 }

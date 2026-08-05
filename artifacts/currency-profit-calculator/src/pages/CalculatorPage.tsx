@@ -55,7 +55,7 @@ function CurrencySwitchSection({
 
 export default function CalculatorPage() {
   const { toast } = useToast();
-  const { currencies, activeId, setActiveId, addCurrency, removeCurrency } = useCurrencies();
+  const { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency } = useCurrencies();
   const activeCurrency = currencies.find(c => c.id === activeId) || currencies[0];
   
   const { state, updateField, reset } = useCalculatorState(activeId);
@@ -576,6 +576,7 @@ export default function CalculatorPage() {
         currencies={currencies}
         onAdd={addCurrency}
         onRemove={removeCurrency}
+        onUpdate={updateCurrency}
       />
       <PreviewModal 
         isOpen={!!screenshotSrc}
