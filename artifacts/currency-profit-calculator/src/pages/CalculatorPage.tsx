@@ -36,7 +36,7 @@ function CurrencySwitchSection({
 
 export default function CalculatorPage() {
   const { toast } = useToast();
-  const { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency } = useCurrencies();
+  const { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency, moveCurrency } = useCurrencies();
   const activeCurrency = currencies.find(c => c.id === activeId) || currencies[0];
   
   const { state, updateField, reset } = useCalculatorState(activeId);
@@ -69,7 +69,7 @@ export default function CalculatorPage() {
   }, [isRailOpen]);
 
   useEffect(() => {
-    const menuHeight = () => Math.min(window.innerHeight - 28, 230);
+    const menuHeight = () => Math.min(window.innerHeight - 28, 300);
     const clampAnchor = (y: number) => {
       const half = menuHeight() / 2;
       return Math.max(half + 14, Math.min(window.innerHeight - half - 14, y));
@@ -81,9 +81,19 @@ export default function CalculatorPage() {
 
       // A fingertip often sits just outside the visible circle while dragging.
       // Use the curved buttons' vertical rhythm as a forgiving touch target.
-      const buttonSpacing = Math.min(46, 184 / Math.max(currencies.length - 1, 1));
-      const index = Math.round((y - (railAnchorY - ((currencies.length - 1) * buttonSpacing) / 2)) / buttonSpacing);
-      return currencies[index]?.id ?? null;
+        const itemCount = currencies.length + 1;
+        const buttonSpacing = Math.min(46, 184 / Math.max(itemCount - 1, 1));
+        const center = (itemCount - 1) / 2;
+        const arcStep = Math.asin(buttonSpacing / 92);
+        const nearest = currencies
+          .map((_, index) => ({
+            index,
+            y: railAnchorY + 92 * Math.sin((index - center) * arcStep),
+          }))
+          .reduce((nearest, candidate) => (
+            Math.abs(candidate.y - y) < Math.abs(nearest.y - y) ? candidate : nearest
+          ));
+        return Math.abs(nearest.y - y) <= 30 ? currencies[nearest.index]?.id ?? null : null;
     };
     
     const onTouchStart = (e: TouchEvent) => {
@@ -110,7 +120,11 @@ export default function CalculatorPage() {
 
       if (isRailOpenRef.current) {
         const managerTarget = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-manager-button]');
-        const managerY = railAnchorY + 109;
+        const itemCount = currencies.length + 1;
+        const buttonSpacing = Math.min(46, 184 / Math.max(itemCount - 1, 1));
+        const center = (itemCount - 1) / 2;
+        const managerAngle = (currencies.length - center) * Math.asin(buttonSpacing / 92);
+        const managerY = railAnchorY + 92 * Math.sin(managerAngle);
         const nearManagerByPosition =
           Math.abs(y - managerY) <= 28 &&
           (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
@@ -230,7 +244,7 @@ export default function CalculatorPage() {
   const openFloatingCurrencies = (side: 'left' | 'right') => {
     if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
     setRailSide(side);
-    setRailAnchorY(Math.max(190, Math.min(window.innerHeight - 190, window.innerHeight / 2)));
+    setRailAnchorY(Math.max(164, Math.min(window.innerHeight - 164, window.innerHeight / 2)));
     setHoverCurrencyId(null);
     setManagerHover(false);
     managerTouchHoverRef.current = false;
@@ -520,6 +534,7 @@ export default function CalculatorPage() {
         onAdd={addCurrency}
         onRemove={removeCurrency}
         onUpdate={updateCurrency}
+        onMove={moveCurrency}
       />
       <PreviewModal 
         isOpen={!!screenshotSrc}

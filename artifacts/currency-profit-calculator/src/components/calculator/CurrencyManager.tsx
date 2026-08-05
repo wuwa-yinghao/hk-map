@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Plus, AlertCircle, Check, Pencil, Trash2 } from 'lucide-react';
+import { X, Plus, AlertCircle, Check, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Currency } from '@/hooks/use-currencies';
 
 export function CurrencyManager({ 
@@ -9,13 +9,15 @@ export function CurrencyManager({
   onAdd, 
   onRemove,
   onUpdate,
+  onMove,
 }: { 
   isOpen: boolean, 
   onClose: () => void,
   currencies: Currency[],
   onAdd: (name: string) => void,
   onRemove: (id: string) => void,
-  onUpdate: (id: string, name: string) => void
+  onUpdate: (id: string, name: string) => void,
+  onMove: (id: string, direction: 'up' | 'down') => void
 }) {
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
@@ -76,7 +78,7 @@ export function CurrencyManager({
             
             <div className="p-4 flex-1 overflow-y-auto max-h-[45vh]">
               <div className="flex flex-col gap-2">
-                {currencies.map(c => (
+                {currencies.map((c, index) => (
                   <div key={c.id} className="bg-calc-surface2 border border-border rounded-lg px-3 py-2.5">
                     {editingId === c.id ? (
                       <div className="flex flex-col gap-2">
@@ -112,6 +114,24 @@ export function CurrencyManager({
                           <span className="text-[13px] text-muted-foreground">{c.name}</span>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onMove(c.id, 'up')}
+                            disabled={index === 0}
+                            aria-label={`將${c.name}上移`}
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:pointer-events-none disabled:opacity-25"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onMove(c.id, 'down')}
+                            disabled={index === currencies.length - 1}
+                            aria-label={`將${c.name}下移`}
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:pointer-events-none disabled:opacity-25"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
                           <button
                             type="button"
                             onClick={() => beginEdit(c)}

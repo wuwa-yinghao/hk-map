@@ -64,5 +64,26 @@ export function useCurrencies() {
     )));
   };
 
-  return { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency };
+  const moveCurrency = (id: string, direction: 'up' | 'down') => {
+    setCurrencies(prev => {
+      const currentIndex = prev.findIndex(currency => currency.id === id);
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+      return next;
+    });
+  };
+
+  return {
+    currencies,
+    activeId,
+    setActiveId,
+    addCurrency,
+    removeCurrency,
+    updateCurrency,
+    moveCurrency,
+  };
 }
