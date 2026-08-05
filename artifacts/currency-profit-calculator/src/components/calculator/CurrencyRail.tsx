@@ -2,6 +2,8 @@ import { Settings, TrendingUp } from 'lucide-react';
 import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
 
+const RAIL_BUTTON_SIZE = 'h-[44px] w-[44px] min-h-[44px] min-w-[44px] max-h-[44px] max-w-[44px] shrink-0 box-border p-0';
+
 export function CurrencyRail({
   isOpen,
   onClose,
@@ -85,7 +87,8 @@ export function CurrencyRail({
               onClose();
             }}
             className={cn(
-              'pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border font-mono shadow-[0_6px_18px_rgba(0,0,0,0.45)]',
+              'pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border font-mono leading-none shadow-[0_6px_18px_rgba(0,0,0,0.45)]',
+              RAIL_BUTTON_SIZE,
               isActive || isHovered
                 ? 'border-primary bg-primary text-primary-foreground shadow-[0_0_20px_rgba(76,158,255,0.42)]'
                 : 'border-border bg-calc-surface text-muted-foreground',
@@ -133,7 +136,8 @@ export function CurrencyRail({
             }}
             onPointerLeave={() => onProfitSummaryHover(false)}
             className={cn(
-              'pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-calc-pos shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+              'pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-calc-pos leading-none shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+              RAIL_BUTTON_SIZE,
               profitSummaryHover
                 ? 'border-calc-pos bg-calc-pos/25 text-calc-pos shadow-[0_0_18px_rgba(47,209,128,0.38)]'
                 : 'border-calc-pos/45 bg-calc-pos/10',
@@ -170,7 +174,8 @@ export function CurrencyRail({
             }}
             onPointerLeave={() => onManagerHover(false)}
             className={cn(
-              'pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-violet-300 shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+              'pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-violet-300 leading-none shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+              RAIL_BUTTON_SIZE,
               managerHover
                 ? 'border-violet-300 bg-violet-400/25 text-violet-200 shadow-[0_0_18px_rgba(167,139,250,0.38)]'
                 : 'border-violet-400/45 bg-violet-400/10',
