@@ -51,34 +51,34 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 :root, .dark {
-  --background: 220 38% 5%;
+  --background: 220 43% 5%;
   --foreground: 215 20% 95%;
-  --border: 218 28% 19%;
+  --border: 216 32% 26%;
   
-  --card: 217 31% 10%;
+  --card: 216 34% 12%;
   --card-foreground: 215 20% 95%;
-  --card-border: 218 28% 19%;
+  --card-border: 216 32% 26%;
 
-  --popover: 217 31% 10%;
+  --popover: 216 34% 12%;
   --popover-foreground: 215 20% 95%;
-  --popover-border: 218 28% 19%;
+  --popover-border: 216 32% 26%;
 
   --primary: 213 95% 68%;
   --primary-foreground: 220 38% 5%;
 
-  --secondary: 218 30% 15%;
+  --secondary: 216 34% 18%;
   --secondary-foreground: 215 20% 95%;
 
-  --muted: 218 30% 15%;
+  --muted: 216 34% 18%;
   --muted-foreground: 218 14% 61%;
 
-  --accent: 218 30% 15%;
+  --accent: 216 34% 18%;
   --accent-foreground: 215 20% 95%;
 
   --destructive: 0 91% 70%;
   --destructive-foreground: 220 38% 5%;
 
-  --input: 218 28% 19%;
+  --input: 216 32% 26%;
   --ring: 213 95% 68%;
 
   --calc-source: 262 83% 78%;
@@ -86,8 +86,8 @@
   --calc-down: 155 66% 54%;
   --calc-pos: 155 66% 54%;
   --calc-neg: 0 91% 70%;
-  --calc-surface: 217 31% 10%;
-  --calc-surface2: 218 30% 15%;
+  --calc-surface: 216 34% 12%;
+  --calc-surface2: 216 34% 18%;
 
   --app-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Helvetica Neue", sans-serif;
   --app-font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
@@ -100,8 +100,8 @@
   }
   body {
     @apply font-sans antialiased text-foreground;
-    background: radial-gradient(circle at 50% -10%, #172235 0%, #080B12 55%);
-    background-color: #080B12;
+    background: radial-gradient(circle at 50% -10%, #1B3150 0%, #070B14 58%);
+    background-color: #070B14;
     min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
   }
