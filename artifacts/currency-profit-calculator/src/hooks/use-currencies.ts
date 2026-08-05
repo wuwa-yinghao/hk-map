@@ -52,6 +52,8 @@ export function useCurrencies() {
   const removeCurrency = (id: string) => {
     setCurrencies(prev => {
       if (prev.length <= 1) return prev;
+      const currency = prev.find(item => item.id === id);
+      if (!currency || currency.isDefault) return prev;
       const next = prev.filter(c => c.id !== id);
       if (activeId === id && next[0]) setActiveId(next[0].id);
       return next;

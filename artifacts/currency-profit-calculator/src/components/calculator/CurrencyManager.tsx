@@ -10,6 +10,7 @@ export function CurrencyManager({
   onRemove,
   onUpdate,
   onMove,
+  initialAdd,
 }: { 
   isOpen: boolean, 
   onClose: () => void,
@@ -17,7 +18,8 @@ export function CurrencyManager({
   onAdd: (name: string) => void,
   onRemove: (id: string) => void,
   onUpdate: (id: string, name: string) => void,
-  onMove: (id: string, direction: 'up' | 'down') => void
+  onMove: (id: string, direction: 'up' | 'down') => void,
+  initialAdd?: boolean,
 }) {
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
@@ -168,6 +170,7 @@ export function CurrencyManager({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="幣種名稱"
+                autoFocus={initialAdd}
                 className="w-full mb-2 bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary"
               />
               {error && (
