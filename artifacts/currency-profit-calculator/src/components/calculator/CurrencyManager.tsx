@@ -129,14 +129,13 @@ export function CurrencyManager({
                     ) : (
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <span className="font-bold text-[14px] font-mono mr-2">{c.code}</span>
                           <span className="text-[13px] text-muted-foreground">{c.name}</span>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => beginEdit(c)}
-                            aria-label={`編輯${c.name} ${c.code}`}
+                            aria-label={`編輯${c.name}`}
                             className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                           >
                             <Pencil size={15} />
@@ -150,7 +149,7 @@ export function CurrencyManager({
                               }
                               onRemove(c.id);
                             }}
-                            aria-label={`刪除${c.name} ${c.code}`}
+                            aria-label={`刪除${c.name}`}
                             className="rounded-md p-1.5 text-calc-neg/80 hover:bg-calc-neg/10 hover:text-calc-neg"
                           >
                             <Trash2 size={15} />
@@ -169,14 +168,14 @@ export function CurrencyManager({
                 <input 
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
-                  placeholder="代碼 (例: THB)"
+                  placeholder="代碼"
                   className="flex-1 w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary font-mono uppercase"
                   maxLength={5}
                 />
                 <input 
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="名稱 (例: 泰銖)"
+                  placeholder="名稱"
                   className="flex-[1.5] w-full bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary"
                 />
               </div>

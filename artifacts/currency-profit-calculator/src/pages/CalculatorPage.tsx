@@ -418,7 +418,7 @@ export default function CalculatorPage() {
               className="text-[10px] font-mono bg-calc-surface2 text-muted-foreground px-2 py-0.5 rounded-full shrink-0 border border-border flex items-center justify-center min-w-[36px]"
               aria-live="polite"
             >
-              {activeCurrency.code}
+              {activeCurrency.name}
             </div>
           </div>
           <DiffDisplay absolute={calc.diffAbsolute} percent={calc.diffPercent} large />
