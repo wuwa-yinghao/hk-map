@@ -40,8 +40,8 @@ export function CurrencyRail({
     const offset = index - center;
     return {
       x: side === 'left'
-        ? 62 + Math.abs(offset) * 8
-        : 68 - Math.abs(offset) * 8,
+        ? 62 - Math.abs(offset) * 8
+        : 68 + Math.abs(offset) * 8,
       y: railHeight / 2 + offset * itemSpacing,
     };
   };
