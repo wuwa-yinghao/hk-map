@@ -80,10 +80,9 @@ export function CurrencyRail({
             )}
             style={{ left: `${x}px`, top: `${y}px` }}
             data-currency-id={currency.id}
-            aria-label={`切換至${currency.name} ${currency.code}`}
+            aria-label={`切換至${currency.name}`}
           >
-            <span className="text-[11px] font-bold leading-none">{currency.code}</span>
-            <span className="mt-0.5 max-w-[42px] truncate font-sans text-[9px] leading-none">
+            <span className="max-w-[40px] truncate font-sans text-[10px] font-semibold leading-tight">
               {currency.name}
             </span>
             {isHovered && (
