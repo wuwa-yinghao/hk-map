@@ -76,22 +76,21 @@ export function UpstreamSummaryModal({
                 key={item.id}
                 className="rounded-lg border border-border bg-calc-surface2 px-3 py-2.5"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-[58px] shrink-0">
                     <div className="truncate text-[13px] font-medium text-foreground">{item.name}</div>
                     <div className="mt-0.5 text-[10px] text-muted-foreground">
                       {item.mode === 'deposit' ? '入金' : '出金'}
                     </div>
                   </div>
-                  <span className={cn('shrink-0 font-mono text-[15px] font-semibold tabular-nums', 'text-calc-up')}>
-                    {formatAmount(item.amount)} USDT
-                  </span>
-                </div>
-                <div className="mt-2 rounded-md border border-calc-up/15 bg-calc-surface px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-muted-foreground">
-                  <div className="mb-0.5 text-[10px] font-semibold text-calc-up">上游公式</div>
-                  <div className="break-words">
-                    {formatInput(item.sourceAmount)} × {formatInput(100 - (Number(item.point) || 0))}% ÷ {formatInput(item.rate)} ={' '}
-                    <b className="text-calc-up">{formatAmount(item.amount)}</b>
+                  <div
+                    className="min-w-0 flex-1 overflow-x-auto rounded-md border border-calc-up/15 bg-calc-surface px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-muted-foreground"
+                    aria-label={`${item.name}上游公式`}
+                  >
+                    <div className="whitespace-nowrap">
+                      {formatInput(item.sourceAmount)} × {formatInput(100 - (Number(item.point) || 0))}% ÷ {formatInput(item.rate)} ={' '}
+                      <b className="text-calc-up">{formatAmount(item.amount)}</b>
+                    </div>
                   </div>
                 </div>
               </div>
