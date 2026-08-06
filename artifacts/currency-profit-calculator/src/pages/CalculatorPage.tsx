@@ -15,6 +15,8 @@ import { CurrencyRail } from '@/components/calculator/CurrencyRail';
 import { CurrencyManager } from '@/components/calculator/CurrencyManager';
 import { ProfitSummaryModal, ProfitSummaryItem } from '@/components/calculator/ProfitSummaryModal';
 import { UpstreamSummaryModal, UpstreamSummaryItem } from '@/components/calculator/UpstreamSummaryModal';
+import { FormulaHistory } from '@/components/calculator/FormulaHistory';
+import { useFormulaHistory } from '@/hooks/use-formula-history';
 import { CalcCard, FieldRow, FormattedInput, NumberInput, DiffDisplay } from '@/components/calculator/shared';
 
 function AdjustButton({ onClick, children }: { onClick: () => void, children: React.ReactNode }) {
@@ -45,6 +47,7 @@ export default function CalculatorPage() {
   const activeCurrency = currencies.find(c => c.id === activeId) || currencies[0];
   
   const { state, updateField, reset } = useCalculatorState(activeId);
+  const { entries: formulaHistory, addEntry: addFormulaHistory, removeEntry: removeFormulaHistory } = useFormulaHistory(activeId);
   const calc = useCalculations(state);
   const profitSummary = useMemo<ProfitSummaryItem[]>(() => (
     currencies.flatMap((currency) => {
@@ -124,6 +127,7 @@ export default function CalculatorPage() {
   const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(false);
   const [isUpstreamSummaryOpen, setIsUpstreamSummaryOpen] = useState(false);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+  const [formulaNote, setFormulaNote] = useState('');
   const isRailOpenRef = useRef(false);
   const railDismissTimerRef = useRef<number | null>(null);
   const managerTouchHoverRef = useRef(false);
@@ -394,6 +398,11 @@ export default function CalculatorPage() {
     updateField('downRate', next.toFixed(5));
   };
 
+  const saveFormulaHistory = () => {
+    addFormulaHistory(state, formulaNote);
+    setFormulaNote('');
+  };
+
   return (
     <div className={cn(
       "min-h-[100dvh] w-full flex flex-col items-center pb-[max(24px,env(safe-area-inset-bottom))] pt-[calc(max(24px,env(safe-area-inset-top))+12px)] px-3 bg-background font-sans overflow-x-hidden",
@@ -571,6 +580,15 @@ export default function CalculatorPage() {
         </CurrencySwitchSection>
 
         {/* Bottom Actions */}
+        <FormulaHistory
+          currencyName={activeCurrency.name}
+          note={formulaNote}
+          onNoteChange={setFormulaNote}
+          onSave={saveFormulaHistory}
+          entries={formulaHistory}
+          onRemove={removeFormulaHistory}
+        />
+
         <CurrencySwitchSection>
           <button
             type="button"
