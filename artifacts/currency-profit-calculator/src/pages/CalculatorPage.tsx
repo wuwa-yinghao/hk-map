@@ -61,8 +61,12 @@ export default function CalculatorPage() {
       if (entries.length === 0) return [];
 
       const profit = entries.reduce((sum, entry) => {
-        const calculations = calculateProfit(entry);
-        return sum + calculations.diffAbsolute;
+        const upstream = entry.upResult ?? calculateProfit(entry).upResult;
+        const downstream = entry.downResult ?? calculateProfit(entry).downResult;
+        const entryProfit = entry.mode === 'deposit'
+          ? upstream - downstream
+          : downstream - upstream;
+        return sum + Number(entryProfit.toFixed(3));
       }, 0);
       const modes = new Set(entries.map((entry) => entry.mode));
 
