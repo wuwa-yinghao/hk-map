@@ -5,7 +5,7 @@ export type ProfitSummaryItem = {
   id: string;
   name: string;
   profit: number;
-  mode: 'deposit' | 'withdraw';
+  mode: 'deposit' | 'withdraw' | 'mixed';
   settlementCurrency: 'USDT';
 };
 
@@ -75,7 +75,7 @@ export function ProfitSummaryModal({
                 <div className="min-w-0">
                   <div className="truncate text-[13px] font-medium text-foreground">{item.name}</div>
                   <div className="mt-0.5 text-[10px] text-muted-foreground">
-                    {item.mode === 'deposit' ? '入金' : '出金'}
+                    {item.mode === 'deposit' ? '入金' : item.mode === 'withdraw' ? '出金' : '多筆記錄'}
                   </div>
                 </div>
                 <span className={cn('shrink-0 font-mono text-[15px] font-semibold tabular-nums', valueClass(item.profit))}>

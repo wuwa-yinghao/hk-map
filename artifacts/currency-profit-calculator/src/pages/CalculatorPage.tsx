@@ -56,32 +56,27 @@ export default function CalculatorPage() {
   const calc = useCalculations(state);
   const profitSummary = useMemo<ProfitSummaryItem[]>(() => (
     currencies.flatMap((currency) => {
-      let currencyState = DEFAULT_CALC_STATE;
+      const entries = currency.id === activeId
+        ? formulaHistory
+        : loadFormulaHistory(currency.id);
 
-      if (currency.id === activeId) {
-        currencyState = state;
-      } else {
-        const saved = localStorage.getItem(`calc_state_${currency.id}`);
-        if (saved) {
-          try {
-            const parsed: unknown = JSON.parse(saved);
-            if (!isCalcState(parsed)) return [];
-            currencyState = parsed;
-          } catch {
-            return [];
-          }
-        }
-      }
+      if (entries.length === 0) return [];
+
+      const profit = entries.reduce((sum, entry) => {
+        const calculations = calculateProfit(entry);
+        return sum + calculations.diffAbsolute;
+      }, 0);
+      const modes = new Set(entries.map((entry) => entry.mode));
 
       return [{
         id: currency.id,
         name: currency.name,
-        mode: currencyState.mode,
-        profit: calculateProfit(currencyState).diffAbsolute,
+        mode: modes.size === 1 ? entries[0].mode : 'mixed',
+        profit,
         settlementCurrency: SETTLEMENT_CURRENCY,
       }];
     })
-  ), [activeId, currencies, state]);
+  ), [activeId, currencies, formulaHistory]);
   const totalProfit = useMemo(
     () => profitSummary.reduce(
       (sum, item) => sum + Number(item.profit.toFixed(3)),
