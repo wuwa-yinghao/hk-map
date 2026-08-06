@@ -89,14 +89,19 @@ export default function CalculatorPage() {
         entries: currency.id === activeId
           ? formulaHistory
           : loadFormulaHistory(currency.id),
+        netAmount: 0,
       }))
-  ), [activeId, currencies, formulaHistory]);
+  ).map((item) => ({
+    ...item,
+    netAmount: item.entries.reduce((sum, entry) => {
+      const amount = entry.upResult ?? calculateProfit(entry).upResult;
+      const signedAmount = entry.mode === 'withdraw' ? amount : -amount;
+      return sum + Number(signedAmount.toFixed(3));
+    }, 0),
+  })), [activeId, currencies, formulaHistory]);
   const totalUpstream = useMemo(
     () => upstreamSummary.reduce(
-      (sum, item) => sum + item.entries.reduce((entrySum, entry) => {
-        const amount = entry.upResult ?? calculateProfit(entry).upResult;
-        return entrySum + Number(amount.toFixed(3));
-      }, 0),
+      (sum, item) => sum + item.netAmount,
       0,
     ),
     [upstreamSummary],

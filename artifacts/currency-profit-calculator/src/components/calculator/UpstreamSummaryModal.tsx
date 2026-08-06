@@ -6,6 +6,7 @@ export type UpstreamSummaryItem = {
   id: string;
   name: string;
   entries: FormulaHistoryEntry[];
+  netAmount: number;
 };
 
 export function UpstreamSummaryModal({
@@ -22,6 +23,7 @@ export function UpstreamSummaryModal({
   if (!isOpen) return null;
 
   const formatAmount = (value: number) => value.toFixed(3);
+  const formatSignedAmount = (value: number) => `${value >= 0 ? '+' : ''}${formatAmount(value)}`;
   const formatInput = (value: string | number) => {
     const number = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(number)) return '0';
@@ -77,7 +79,9 @@ export function UpstreamSummaryModal({
             <div className="flex items-center justify-between gap-3">
               <span className="text-[12px] text-muted-foreground">上游金額總和</span>
               <span className="font-mono text-xl font-bold tabular-nums text-calc-up">
-                {formatAmount(total)} USDT
+                <span className={total >= 0 ? 'text-calc-up' : 'text-calc-down'}>
+                  {formatSignedAmount(total)} USDT
+                </span>
               </span>
             </div>
           </div>
@@ -90,9 +94,17 @@ export function UpstreamSummaryModal({
                 aria-labelledby={`upstream-${item.id}`}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <h4 id={`upstream-${item.id}`} className="truncate text-[13px] font-semibold text-foreground">
-                    {item.name}
-                  </h4>
+                  <div className="min-w-0">
+                    <h4 id={`upstream-${item.id}`} className="truncate text-[13px] font-semibold text-foreground">
+                      {item.name}
+                    </h4>
+                    <p className={cn(
+                      'font-mono text-[12px] font-semibold tabular-nums',
+                      item.netAmount >= 0 ? 'text-calc-up' : 'text-calc-down',
+                    )}>
+                      {formatSignedAmount(item.netAmount)} USDT
+                    </p>
+                  </div>
                   <span className="shrink-0 text-[10px] text-muted-foreground">
                     {item.entries.length} 筆
                   </span>
