@@ -119,7 +119,7 @@ export function UpstreamSummaryModal({
                           'w-[32px] shrink-0 text-[10px] font-semibold',
                           entry.mode === 'deposit' ? 'text-calc-up' : 'text-calc-down',
                         )}>
-                          {entry.mode === 'deposit' ? '入金' : '取現'}
+                          {entry.mode === 'deposit' ? '入金' : '出金'}
                         </span>
                         <div
                           className="min-w-0 flex-1 overflow-x-auto rounded-md border border-calc-up/15 bg-calc-surface px-2 py-1 font-mono text-[10.5px] leading-relaxed text-muted-foreground"

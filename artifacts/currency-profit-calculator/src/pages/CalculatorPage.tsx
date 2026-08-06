@@ -95,7 +95,7 @@ export default function CalculatorPage() {
     ...item,
     netAmount: item.entries.reduce((sum, entry) => {
       const amount = entry.upResult ?? calculateProfit(entry).upResult;
-      const signedAmount = entry.mode === 'withdraw' ? amount : -amount;
+      const signedAmount = entry.mode === 'deposit' ? amount : -amount;
       return sum + Number(signedAmount.toFixed(3));
     }, 0),
   })), [activeId, currencies, formulaHistory]);
