@@ -1,14 +1,11 @@
 import { ArrowUpFromLine, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { FormulaHistoryEntry } from '@/hooks/use-formula-history';
 
 export type UpstreamSummaryItem = {
   id: string;
   name: string;
-  amount: number;
-  mode: 'deposit' | 'withdraw';
-  sourceAmount: string;
-  point: string;
-  rate: string;
+  entries: FormulaHistoryEntry[];
 };
 
 export function UpstreamSummaryModal({
@@ -30,6 +27,21 @@ export function UpstreamSummaryModal({
     if (!Number.isFinite(number)) return '0';
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(number);
   };
+  const calculateUpstream = (entry: FormulaHistoryEntry) => {
+    const amount = Number(entry.amount) || 0;
+    const point = Number(entry.upPoint) || 0;
+    const rate = Number(entry.upRate) || 1;
+    return (amount * ((100 - point) / 100)) / rate;
+  };
+  const formatTime = (value: string) => new Intl.DateTimeFormat('zh-TW', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value));
+  const groupedItems = items.map((item) => ({
+    ...item,
+    entries: Array.isArray(item.entries) ? item.entries : [],
+  }));
 
   return (
     <div
@@ -70,30 +82,55 @@ export function UpstreamSummaryModal({
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            {items.map((item) => (
-              <div
+          <div className="flex flex-col gap-2.5">
+            {groupedItems.map((item) => (
+              <section
                 key={item.id}
                 className="rounded-lg border border-border bg-calc-surface2 px-3 py-2.5"
+                aria-labelledby={`upstream-${item.id}`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-[58px] shrink-0">
-                    <div className="truncate text-[13px] font-medium text-foreground">{item.name}</div>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {item.mode === 'deposit' ? '入金' : '出金'}
-                    </div>
-                  </div>
-                  <div
-                    className="min-w-0 flex-1 overflow-x-auto rounded-md border border-calc-up/15 bg-calc-surface px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-muted-foreground"
-                    aria-label={`${item.name}上游公式`}
-                  >
-                    <div className="whitespace-nowrap">
-                      {formatInput(item.sourceAmount)} × {formatInput(100 - (Number(item.point) || 0))}% ÷ {formatInput(item.rate)} ={' '}
-                      <b className="text-calc-up">{formatAmount(item.amount)}</b>
-                    </div>
-                  </div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <h4 id={`upstream-${item.id}`} className="truncate text-[13px] font-semibold text-foreground">
+                    {item.name}
+                  </h4>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {item.entries.length} 筆
+                  </span>
                 </div>
-              </div>
+                {item.entries.length === 0 ? (
+                  <p className="py-1 text-[10px] text-muted-foreground">尚無上游公式記錄</p>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {item.entries.map((entry) => (
+                      <div key={entry.id} className="flex items-center gap-2">
+                        <span className={cn(
+                          'w-[32px] shrink-0 text-[10px] font-semibold',
+                          entry.mode === 'deposit' ? 'text-calc-up' : 'text-calc-down',
+                        )}>
+                          {entry.mode === 'deposit' ? '入金' : '取現'}
+                        </span>
+                        <div
+                          className="min-w-0 flex-1 overflow-x-auto rounded-md border border-calc-up/15 bg-calc-surface px-2 py-1 font-mono text-[10.5px] leading-relaxed text-muted-foreground"
+                          aria-label={`${item.name}上游公式`}
+                        >
+                          <div className="whitespace-nowrap">
+                            <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
+                            {formatInput(entry.amount)} × {formatInput(100 - (Number(entry.upPoint) || 0))}% ÷ {formatInput(entry.upRate)} ={' '}
+                            <b className="text-calc-up">
+                              {formatAmount(entry.upResult ?? calculateUpstream(entry))}
+                            </b>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {item.entries.some((entry) => entry.note) && (
+                  <p className="mt-1.5 truncate text-[10px] text-muted-foreground">
+                    備註：{item.entries.find((entry) => entry.note)?.note}
+                  </p>
+                )}
+              </section>
             ))}
           </div>
         </div>

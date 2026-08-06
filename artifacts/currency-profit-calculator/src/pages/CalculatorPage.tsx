@@ -16,7 +16,7 @@ import { CurrencyManager } from '@/components/calculator/CurrencyManager';
 import { ProfitSummaryModal, ProfitSummaryItem } from '@/components/calculator/ProfitSummaryModal';
 import { UpstreamSummaryModal, UpstreamSummaryItem } from '@/components/calculator/UpstreamSummaryModal';
 import { FormulaHistory } from '@/components/calculator/FormulaHistory';
-import { useFormulaHistory } from '@/hooks/use-formula-history';
+import { loadFormulaHistory, useFormulaHistory } from '@/hooks/use-formula-history';
 import { CalcCard, FieldRow, FormattedInput, NumberInput, DiffDisplay } from '@/components/calculator/shared';
 
 function AdjustButton({ onClick, children }: { onClick: () => void, children: React.ReactNode }) {
@@ -85,37 +85,22 @@ export default function CalculatorPage() {
     [profitSummary],
   );
   const upstreamSummary = useMemo<UpstreamSummaryItem[]>(() => (
-    currencies.flatMap((currency) => {
-      let currencyState = DEFAULT_CALC_STATE;
-
-      if (currency.id === activeId) {
-        currencyState = state;
-      } else {
-        const saved = localStorage.getItem(`calc_state_${currency.id}`);
-        if (saved) {
-          try {
-            const parsed: unknown = JSON.parse(saved);
-            if (!isCalcState(parsed)) return [];
-            currencyState = parsed;
-          } catch {
-            return [];
-          }
-        }
-      }
-
-      return [{
+    currencies.map((currency) => ({
         id: currency.id,
         name: currency.name,
-        mode: currencyState.mode,
-        amount: calculateProfit(currencyState).upResult,
-        sourceAmount: currencyState.amount,
-        point: currencyState.upPoint,
-        rate: currencyState.upRate,
-      }];
-    })
-  ), [activeId, currencies, state]);
+        entries: currency.id === activeId
+          ? formulaHistory
+          : loadFormulaHistory(currency.id),
+      }))
+  ), [activeId, currencies, formulaHistory]);
   const totalUpstream = useMemo(
-    () => upstreamSummary.reduce((sum, item) => sum + Number(item.amount.toFixed(3)), 0),
+    () => upstreamSummary.reduce(
+      (sum, item) => sum + item.entries.reduce((entrySum, entry) => {
+        const amount = entry.upResult ?? calculateProfit(entry).upResult;
+        return entrySum + Number(amount.toFixed(3));
+      }, 0),
+      0,
+    ),
     [upstreamSummary],
   );
   

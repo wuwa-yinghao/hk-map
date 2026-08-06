@@ -28,7 +28,7 @@ const isFormulaHistoryEntry = (value: unknown): value is FormulaHistoryEntry => 
   );
 };
 
-const loadHistory = (currencyId: string) => {
+export const loadFormulaHistory = (currencyId: string): FormulaHistoryEntry[] => {
   try {
     const saved = localStorage.getItem(historyKey(currencyId));
     if (!saved) return [];
@@ -40,10 +40,10 @@ const loadHistory = (currencyId: string) => {
 };
 
 export function useFormulaHistory(currencyId: string) {
-  const [entries, setEntries] = useState<FormulaHistoryEntry[]>(() => loadHistory(currencyId));
+  const [entries, setEntries] = useState<FormulaHistoryEntry[]>(() => loadFormulaHistory(currencyId));
 
   useEffect(() => {
-    setEntries(loadHistory(currencyId));
+    setEntries(loadFormulaHistory(currencyId));
   }, [currencyId]);
 
   useEffect(() => {
