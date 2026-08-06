@@ -3,10 +3,8 @@ import { RefreshCw, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrencies } from '@/hooks/use-currencies';
 import {
-  DEFAULT_CALC_STATE,
   SETTLEMENT_CURRENCY,
   calculateProfit,
-  isCalcState,
   useCalculatorState,
   useCalculations,
 } from '@/hooks/use-calculator-state';
