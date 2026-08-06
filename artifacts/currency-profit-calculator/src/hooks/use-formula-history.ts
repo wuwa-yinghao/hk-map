@@ -5,6 +5,8 @@ export type FormulaHistoryEntry = CalcState & {
   id: string;
   note: string;
   createdAt: string;
+  upResult?: number;
+  downResult?: number;
 };
 
 const historyKey = (currencyId: string) => `calc_formula_history_${currencyId}`;
@@ -48,9 +50,10 @@ export function useFormulaHistory(currencyId: string) {
     localStorage.setItem(historyKey(currencyId), JSON.stringify(entries));
   }, [currencyId, entries]);
 
-  const addEntry = useCallback((state: CalcState, note: string) => {
+  const addEntry = useCallback((state: CalcState, note: string, results: { upResult: number; downResult: number }) => {
     setEntries((current) => [{
       ...state,
+      ...results,
       id: crypto.randomUUID(),
       note: note.trim(),
       createdAt: new Date().toISOString(),

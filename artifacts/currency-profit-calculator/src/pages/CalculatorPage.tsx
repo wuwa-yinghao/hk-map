@@ -399,7 +399,10 @@ export default function CalculatorPage() {
   };
 
   const saveFormulaHistory = () => {
-    addFormulaHistory(state, formulaNote);
+    addFormulaHistory(state, formulaNote, {
+      upResult: calc.upResult,
+      downResult: calc.downResult,
+    });
     setFormulaNote('');
   };
 

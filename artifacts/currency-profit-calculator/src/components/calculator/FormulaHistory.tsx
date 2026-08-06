@@ -1,6 +1,19 @@
 import { BookMarked, Plus, Trash2 } from 'lucide-react';
 import { FormulaHistoryEntry } from '@/hooks/use-formula-history';
 
+const formatNumber = (value: string | number) => {
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(number);
+};
+
+const calculateLeg = (amount: string, point: string, rate: string) => {
+  const amountNumber = Number(amount) || 0;
+  const pointNumber = Number(point) || 0;
+  const rateNumber = Number(rate) || 1;
+  return (amountNumber * ((100 - pointNumber) / 100)) / rateNumber;
+};
+
 export function FormulaHistory({
   currencyName,
   note,
@@ -21,6 +34,12 @@ export function FormulaHistory({
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+  }).format(new Date(value));
+
+  const formatTime = (value: string) => new Intl.DateTimeFormat('zh-TW', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   }).format(new Date(value));
 
   return (
@@ -75,13 +94,32 @@ export function FormulaHistory({
                 </button>
               </div>
 
-              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[10px] text-muted-foreground">
-                <span>金額 <b className="text-foreground">{entry.amount}</b></span>
-                <span>實時匯率 <b className="text-calc-source">{entry.srcRate}</b></span>
-                <span>上游點位 <b className="text-calc-up">{entry.upPoint}%</b></span>
-                <span>上游匯率 <b className="text-calc-up">{entry.upRate}</b></span>
-                <span>下游點位 <b className="text-calc-down">{entry.downPoint}%</b></span>
-                <span>下游匯率 <b className="text-calc-down">{entry.downRate}</b></span>
+              <div className="mt-2.5 space-y-2 font-mono text-[10.5px] leading-relaxed">
+                {([
+                  {
+                    label: '上游',
+                    point: entry.upPoint,
+                    rate: entry.upRate,
+                    result: entry.upResult ?? calculateLeg(entry.amount, entry.upPoint, entry.upRate),
+                    tone: 'text-calc-up',
+                  },
+                  {
+                    label: '下游',
+                    point: entry.downPoint,
+                    rate: entry.downRate,
+                    result: entry.downResult ?? calculateLeg(entry.amount, entry.downPoint, entry.downRate),
+                    tone: 'text-calc-down',
+                  },
+                ] as const).map((leg) => (
+                  <div key={leg.label} className="rounded-md border border-border/70 bg-calc-surface/60 px-2 py-1.5">
+                    <p className={`mb-0.5 text-[11px] font-semibold ${leg.tone}`}>{leg.label}</p>
+                    <p className="break-words text-muted-foreground">
+                      <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
+                      <span>{formatNumber(entry.amount)} × {formatNumber(100 - (Number(leg.point) || 0))}% ÷ {formatNumber(leg.rate)} = </span>
+                      <b className={leg.tone}>{formatNumber(leg.result)}</b>
+                    </p>
+                  </div>
+                ))}
               </div>
             </article>
           ))}
