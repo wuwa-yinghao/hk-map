@@ -6,6 +6,9 @@ export type UpstreamSummaryItem = {
   name: string;
   amount: number;
   mode: 'deposit' | 'withdraw';
+  sourceAmount: string;
+  point: string;
+  rate: string;
 };
 
 export function UpstreamSummaryModal({
@@ -22,6 +25,11 @@ export function UpstreamSummaryModal({
   if (!isOpen) return null;
 
   const formatAmount = (value: number) => value.toFixed(3);
+  const formatInput = (value: string | number) => {
+    const number = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(number)) return '0';
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(number);
+  };
 
   return (
     <div
@@ -66,17 +74,26 @@ export function UpstreamSummaryModal({
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-calc-surface2 px-3 py-2.5"
+                className="rounded-lg border border-border bg-calc-surface2 px-3 py-2.5"
               >
-                <div className="min-w-0">
-                  <div className="truncate text-[13px] font-medium text-foreground">{item.name}</div>
-                  <div className="mt-0.5 text-[10px] text-muted-foreground">
-                    {item.mode === 'deposit' ? '入金' : '出金'}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-medium text-foreground">{item.name}</div>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                      {item.mode === 'deposit' ? '入金' : '出金'}
+                    </div>
+                  </div>
+                  <span className={cn('shrink-0 font-mono text-[15px] font-semibold tabular-nums', 'text-calc-up')}>
+                    {formatAmount(item.amount)} USDT
+                  </span>
+                </div>
+                <div className="mt-2 rounded-md border border-calc-up/15 bg-calc-surface px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-muted-foreground">
+                  <div className="mb-0.5 text-[10px] font-semibold text-calc-up">上游公式</div>
+                  <div className="break-words">
+                    {formatInput(item.sourceAmount)} × {formatInput(100 - (Number(item.point) || 0))}% ÷ {formatInput(item.rate)} ={' '}
+                    <b className="text-calc-up">{formatAmount(item.amount)}</b>
                   </div>
                 </div>
-                <span className={cn('shrink-0 font-mono text-[15px] font-semibold tabular-nums', 'text-calc-up')}>
-                  {formatAmount(item.amount)} USDT
-                </span>
               </div>
             ))}
           </div>

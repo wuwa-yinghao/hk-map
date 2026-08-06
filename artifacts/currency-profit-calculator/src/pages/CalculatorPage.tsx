@@ -108,6 +108,9 @@ export default function CalculatorPage() {
         name: currency.name,
         mode: currencyState.mode,
         amount: calculateProfit(currencyState).upResult,
+        sourceAmount: currencyState.amount,
+        point: currencyState.upPoint,
+        rate: currencyState.upRate,
       }];
     })
   ), [activeId, currencies, state]);
