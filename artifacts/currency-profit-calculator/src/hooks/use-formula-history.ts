@@ -64,5 +64,9 @@ export function useFormulaHistory(currencyId: string) {
     setEntries((current) => current.filter((entry) => entry.id !== id));
   }, []);
 
-  return { entries, addEntry, removeEntry };
+  const clearEntries = useCallback(() => {
+    setEntries([]);
+  }, []);
+
+  return { entries, addEntry, removeEntry, clearEntries };
 }

@@ -46,8 +46,13 @@ export default function CalculatorPage() {
   const { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency, moveCurrency } = useCurrencies();
   const activeCurrency = currencies.find(c => c.id === activeId) || currencies[0];
   
-  const { state, updateField, reset } = useCalculatorState(activeId);
-  const { entries: formulaHistory, addEntry: addFormulaHistory, removeEntry: removeFormulaHistory } = useFormulaHistory(activeId);
+  const { state, updateField } = useCalculatorState(activeId);
+  const {
+    entries: formulaHistory,
+    addEntry: addFormulaHistory,
+    removeEntry: removeFormulaHistory,
+    clearEntries: clearFormulaHistory,
+  } = useFormulaHistory(activeId);
   const calc = useCalculations(state);
   const profitSummary = useMemo<ProfitSummaryItem[]>(() => (
     currencies.flatMap((currency) => {
@@ -583,12 +588,12 @@ export default function CalculatorPage() {
         <CurrencySwitchSection>
           <button
             type="button"
-            onClick={reset}
+            onClick={clearFormulaHistory}
             data-html2canvas-ignore="true"
             className="w-full min-h-[38px] rounded-lg border border-[rgba(255,92,92,0.35)] bg-calc-surface text-calc-neg text-[13px] font-semibold flex items-center justify-center gap-2 mt-1 active:bg-calc-surface2"
           >
             <RefreshCw size={14} />
-            <span>重置全部欄位</span>
+            <span>重置公式紀錄</span>
           </button>
         </CurrencySwitchSection>
 
