@@ -3,6 +3,9 @@ import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
 
 const RAIL_BUTTON_SIZE = 'h-[44px] w-[44px] min-h-[44px] min-w-[44px] max-h-[44px] max-w-[44px] shrink-0 box-border p-0';
+const RAIL_WIDTH = 130;
+const RAIL_EDGE_INSET = 8;
+const RAIL_BUTTON_RADIUS = 22;
 
 export function CurrencyRail({
   isOpen,
@@ -49,13 +52,18 @@ export function CurrencyRail({
   const itemSpacing = 54;
   const railHeight = Math.max(230, (itemCount - 1) * itemSpacing + 52);
   const center = (itemCount - 1) / 2;
+  const minButtonCenter = RAIL_EDGE_INSET + RAIL_BUTTON_RADIUS;
+  const maxButtonCenter = RAIL_WIDTH - RAIL_EDGE_INSET - RAIL_BUTTON_RADIUS;
 
   const getPosition = (index: number) => {
     const offset = index - center;
+    const rawX = side === 'left'
+      ? 76 - Math.abs(offset) * 20
+      : 54 + Math.abs(offset) * 20;
     return {
-      x: side === 'left'
-        ? 76 - Math.abs(offset) * 20
-        : 54 + Math.abs(offset) * 20,
+      // Keep the fan shape, but never let a button touch or cross the
+      // viewport edge when the currency list grows.
+      x: Math.max(minButtonCenter, Math.min(maxButtonCenter, rawX)),
       y: railHeight / 2 + offset * itemSpacing,
     };
   };
