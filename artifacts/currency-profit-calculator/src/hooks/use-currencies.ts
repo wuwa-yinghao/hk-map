@@ -7,6 +7,8 @@ export type Currency = {
   isDefault: boolean;
 };
 
+export const MAX_CURRENCIES = 20;
+
 const DEFAULT_CURRENCIES: Currency[] = [
   { id: 'myr', code: 'MYR', name: '馬幣', isDefault: true },
   { id: 'sgd', code: 'SGD', name: '新幣', isDefault: true },
@@ -43,6 +45,7 @@ export function useCurrencies() {
   }, [activeId]);
 
   const addCurrency = (name: string) => {
+    if (currencies.length >= MAX_CURRENCIES) return;
     const id = 'currency_' + Date.now();
     const newCur = { id, code: id, name, isDefault: false };
     setCurrencies(prev => [...prev, newCur]);

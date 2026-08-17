@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Plus, AlertCircle, Check, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
-import { Currency } from '@/hooks/use-currencies';
+import { Currency, MAX_CURRENCIES } from '@/hooks/use-currencies';
 
 export function CurrencyManager({ 
   isOpen, 
@@ -24,12 +24,15 @@ export function CurrencyManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
+  const atLimit = currencies.length >= MAX_CURRENCIES;
+
   const handleAdd = () => {
     const name = newName.trim();
     if (!name) {
       setError('請輸入幣種名稱');
       return;
     }
+    if (atLimit) return;
     onAdd(name);
     setNewName('');
     setError('');
@@ -163,26 +166,41 @@ export function CurrencyManager({
             </div>
 
             <div className="p-4 border-t border-border bg-calc-surface2/50">
-              <h4 className="text-[12px] font-medium text-muted-foreground mb-2">新增幣種</h4>
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="幣種名稱"
-                className="w-full mb-2 bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary"
-              />
-              {error && (
-                <div className="flex items-center gap-1.5 text-calc-neg text-[11px] mb-2">
-                  <AlertCircle size={12} />
-                  <span>{error}</span>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[12px] font-medium text-muted-foreground">新增幣種</h4>
+                <span className={`text-[11px] tabular-nums ${atLimit ? 'text-calc-neg font-semibold' : 'text-muted-foreground'}`}>
+                  {currencies.length} / {MAX_CURRENCIES}
+                </span>
+              </div>
+              {atLimit ? (
+                <div className="flex items-center gap-1.5 rounded-md border border-calc-neg/20 bg-calc-neg/5 px-3 py-2.5 text-calc-neg text-[12px]">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>已達幣種上限（{MAX_CURRENCIES} 個），請先刪除不需要的幣種再新增。</span>
                 </div>
+              ) : (
+                <>
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                    placeholder="幣種名稱"
+                    className="w-full mb-2 bg-calc-surface border border-border rounded-md px-3 py-2 text-[13px] outline-none focus:border-primary"
+                  />
+                  {error && (
+                    <div className="flex items-center gap-1.5 text-calc-neg text-[11px] mb-2">
+                      <AlertCircle size={12} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleAdd}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md font-semibold text-[13px]"
+                  >
+                    <Plus size={16} />
+                    <span>新增</span>
+                  </button>
+                </>
               )}
-              <button 
-                onClick={handleAdd}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md font-semibold text-[13px]"
-              >
-                <Plus size={16} />
-                <span>新增</span>
-              </button>
             </div>
           </div>
         </div>
