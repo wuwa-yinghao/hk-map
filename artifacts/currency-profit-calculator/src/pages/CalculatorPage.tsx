@@ -144,29 +144,13 @@ export default function CalculatorPage() {
   }, [isRailOpen]);
 
   useEffect(() => {
-      const railHeight = () => Math.max(230, currencies.length * 54 + 160);
     const clampAnchor = (y: number) => {
-      const half = Math.min((window.innerHeight - 28) / 2, railHeight() / 2);
-      return Math.max(half + 14, Math.min(window.innerHeight - half - 14, y));
+      return Math.max(14, Math.min(window.innerHeight - 14, y));
     };
 
     const currencyAtPoint = (x: number, y: number) => {
       const target = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-currency-id]');
-      if (target?.dataset.currencyId) return target.dataset.currencyId;
-
-      // A fingertip often sits just outside the visible circle while dragging.
-      // Use the rail's fixed vertical rhythm as a forgiving touch target.
-        const itemCount = currencies.length + 3;
-        const center = (itemCount - 1) / 2;
-        const nearest = currencies
-          .map((_, index) => ({
-            index,
-            y: railAnchorY + (index - center) * 54,
-          }))
-          .reduce((nearest, candidate) => (
-            Math.abs(candidate.y - y) < Math.abs(nearest.y - y) ? candidate : nearest
-          ));
-        return Math.abs(nearest.y - y) <= 30 ? currencies[nearest.index]?.id ?? null : null;
+      return target?.dataset.currencyId ?? null;
     };
     
     const onTouchStart = (e: TouchEvent) => {
@@ -197,27 +181,9 @@ export default function CalculatorPage() {
 
       if (isRailOpenRef.current) {
         const target = document.elementFromPoint(x, y);
-        const managerTarget = target?.closest<HTMLElement>('[data-manager-button]');
-        const profitSummaryTarget = target?.closest<HTMLElement>('[data-profit-summary-button]');
-        const itemCount = currencies.length + 3;
-        const center = (itemCount - 1) / 2;
-        const profitSummaryY = railAnchorY + (currencies.length - center) * 54;
-        const upstreamSummaryY = profitSummaryY;
-        const profitSummaryTargetY = railAnchorY + (currencies.length + 1 - center) * 54;
-        const managerY = railAnchorY + (currencies.length + 2 - center) * 54;
-        const upstreamSummaryTarget = target?.closest<HTMLElement>('[data-upstream-summary-button]');
-        const nearManagerByPosition =
-          Math.abs(y - managerY) <= 28 &&
-          (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
-        const nearUpstreamSummaryByPosition =
-          Math.abs(y - upstreamSummaryY) <= 28 &&
-          (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
-        const nearProfitSummaryByPosition =
-          Math.abs(y - profitSummaryTargetY) <= 28 &&
-          (railSide === 'left' ? x <= 130 : x >= window.innerWidth - 130);
-        const isOverManager = Boolean(managerTarget) || nearManagerByPosition;
-        const isOverUpstreamSummary = Boolean(upstreamSummaryTarget) || nearUpstreamSummaryByPosition;
-        const isOverProfitSummary = Boolean(profitSummaryTarget) || nearProfitSummaryByPosition;
+        const isOverManager = Boolean(target?.closest<HTMLElement>('[data-manager-button]'));
+        const isOverUpstreamSummary = Boolean(target?.closest<HTMLElement>('[data-upstream-summary-button]'));
+        const isOverProfitSummary = Boolean(target?.closest<HTMLElement>('[data-profit-summary-button]'));
         managerTouchHoverRef.current = isOverManager;
         upstreamSummaryTouchHoverRef.current = isOverUpstreamSummary;
         profitSummaryTouchHoverRef.current = isOverProfitSummary;
@@ -282,7 +248,12 @@ export default function CalculatorPage() {
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });
     const preventPageScroll = (event: TouchEvent) => {
-      if (isRailOpenRef.current) event.preventDefault();
+      if (!isRailOpenRef.current) return;
+      // Allow native vertical scroll inside the rail's scrollable list.
+      const touch = event.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (target?.closest('[data-rail-scroll]')) return;
+      event.preventDefault();
     };
     window.addEventListener('touchmove', preventPageScroll, { passive: false });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
@@ -294,21 +265,27 @@ export default function CalculatorPage() {
       window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('touchcancel', onTouchEnd);
     };
-     }, [currencies, railAnchorY, setActiveId]);
+     }, [setActiveId]);
 
   useEffect(() => {
     if (!isRailOpen) return;
 
     const scrollY = window.scrollY;
     const { body, documentElement } = document;
-    const preventBackgroundTouchMove = (event: TouchEvent) => event.preventDefault();
+    // Only block touchmove outside the rail's scrollable list so the
+    // currency buttons can be scrolled vertically on touch devices.
+    const preventBackgroundTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (target?.closest('[data-rail-scroll]')) return;
+      event.preventDefault();
+    };
     const previous = {
       position: body.style.position,
       top: body.style.top,
       width: body.style.width,
       overflow: body.style.overflow,
       overscroll: documentElement.style.overscrollBehavior,
-      touchAction: documentElement.style.touchAction,
     };
 
     body.style.position = 'fixed';
@@ -316,7 +293,6 @@ export default function CalculatorPage() {
     body.style.width = '100%';
     body.style.overflow = 'hidden';
     documentElement.style.overscrollBehavior = 'none';
-    documentElement.style.touchAction = 'none';
     document.addEventListener('touchmove', preventBackgroundTouchMove, { passive: false });
 
     return () => {
@@ -326,7 +302,6 @@ export default function CalculatorPage() {
       body.style.width = previous.width;
       body.style.overflow = previous.overflow;
       documentElement.style.overscrollBehavior = previous.overscroll;
-      documentElement.style.touchAction = previous.touchAction;
       window.scrollTo(0, scrollY);
     };
   }, [isRailOpen]);
@@ -355,11 +330,6 @@ export default function CalculatorPage() {
   const openFloatingCurrencies = (side: 'left' | 'right') => {
     if (railDismissTimerRef.current) window.clearTimeout(railDismissTimerRef.current);
     setRailSide(side);
-    const railHalfHeight = Math.min(
-      (window.innerHeight - 28) / 2,
-      Math.max(230, currencies.length * 54 + 160) / 2,
-    );
-    setRailAnchorY(Math.max(railHalfHeight + 14, Math.min(window.innerHeight - railHalfHeight - 14, window.innerHeight / 2)));
     setHoverCurrencyId(null);
     setManagerHover(false);
     setProfitSummaryHover(false);
