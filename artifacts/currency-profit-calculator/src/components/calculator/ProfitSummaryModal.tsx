@@ -45,13 +45,14 @@ function EntryRow({ entry }: { entry: FormulaHistoryEntry }) {
   const profitColor = profit > 0 ? 'text-calc-pos' : profit < 0 ? 'text-calc-neg' : 'text-muted-foreground';
 
   // formula: 入金 → 上游 − 下游 = profit；出金 → 下游 − 上游 = profit
-  const formulaStr = isDeposit
-    ? `${formatAmount(up)} − ${formatAmount(down)} = `
-    : `${formatAmount(down)} − ${formatAmount(up)} = `;
+  const firstResult = isDeposit ? up : down;
+  const secondResult = isDeposit ? down : up;
+  const firstResultColor = isDeposit ? 'text-calc-up/80' : 'text-calc-down/80';
+  const secondResultColor = isDeposit ? 'text-calc-down/80' : 'text-calc-up/80';
 
   return (
     <div className="flex flex-col gap-0.5 py-2 border-t border-border/50 first:border-0 first:pt-0">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-1.5">
         <div className="flex items-center gap-1.5">
           <span className={cn(
             'text-[10px] font-semibold px-1.5 py-0.5 rounded',
@@ -65,27 +66,22 @@ function EntryRow({ entry }: { entry: FormulaHistoryEntry }) {
             {formatDateTime(entry.createdAt)}
           </span>
         </div>
-        <span className={cn('font-mono text-[12px] font-bold tabular-nums', profitColor)}>
-          {formatSigned(profit)}
-        </span>
       </div>
 
-      {/* 公式行 */}
+      {/* 精簡公式：金額 · 上游/下游結果 = 利潤 */}
       <div
-        className="overflow-x-auto rounded-md border border-border/40 bg-calc-surface px-2 py-1 font-mono text-[10.5px] text-muted-foreground"
-        aria-label="利潤公式"
+        className="rounded-md border border-border/40 bg-calc-surface px-2 py-1 font-mono text-[10px] leading-relaxed text-muted-foreground"
+        aria-label={`${isDeposit ? '入金' : '出金'} ${formatDateTime(entry.createdAt)}，金額 ${formatInput(entry.amount)}，利潤公式 ${formatAmount(firstResult)} 減 ${formatAmount(secondResult)} 等於 ${formatSigned(profit)}`}
       >
-        <div className="whitespace-nowrap">
-          金額&nbsp;
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+          <span className="text-muted-foreground/80">金額</span>
           <span className="text-foreground/80">{formatInput(entry.amount)}</span>
-          {'　'}
-          <span className="text-calc-up/80">上游&nbsp;{formatAmount(up)}</span>
-          {'　'}
-          <span className="text-calc-down/80">下游&nbsp;{formatAmount(down)}</span>
-          {'　'}
-          {formulaStr}
+          <span className="text-muted-foreground/60">·</span>
+          <span className={firstResultColor}>{formatAmount(firstResult)}</span>
+          <span className="text-muted-foreground/70">−</span>
+          <span className={secondResultColor}>{formatAmount(secondResult)}</span>
+          <span className="text-muted-foreground/70">=</span>
           <b className={profitColor}>{formatSigned(profit)}</b>
-          &nbsp;USDT
         </div>
       </div>
 
