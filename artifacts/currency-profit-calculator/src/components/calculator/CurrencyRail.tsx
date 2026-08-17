@@ -1,4 +1,4 @@
-import { ArrowUpFromLine, Settings, TrendingUp } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Settings, TrendingUp } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
@@ -18,12 +18,15 @@ export function CurrencyRail({
   onOpenManager,
   onOpenProfitSummary,
   onOpenUpstreamSummary,
+  onOpenDownstreamSummary,
   managerHover,
   onManagerHover,
   profitSummaryHover,
   onProfitSummaryHover,
   upstreamSummaryHover,
   onUpstreamSummaryHover,
+  downstreamSummaryHover,
+  onDownstreamSummaryHover,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -37,12 +40,15 @@ export function CurrencyRail({
   onOpenManager: () => void;
   onOpenProfitSummary: () => void;
   onOpenUpstreamSummary: () => void;
+  onOpenDownstreamSummary: () => void;
   managerHover: boolean;
   onManagerHover: (hovered: boolean) => void;
   profitSummaryHover: boolean;
   onProfitSummaryHover: (hovered: boolean) => void;
   upstreamSummaryHover: boolean;
   onUpstreamSummaryHover: (hovered: boolean) => void;
+  downstreamSummaryHover: boolean;
+  onDownstreamSummaryHover: (hovered: boolean) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +76,7 @@ export function CurrencyRail({
     return () => clearTimeout(timeout);
   }, [isOpen, activeId]);
 
-  const tooltipSide = side === 'left' ? 'left-[52px]' : 'right-[52px]';
+  const tooltipSide = side === 'left' ? 'left-[116px]' : 'right-[116px]';
 
   // Slide direction: left rail slides in from the left, right rail from the right
   const slideHidden = side === 'left' ? '-translate-x-3' : 'translate-x-3';
@@ -80,7 +86,7 @@ export function CurrencyRail({
       className={cn(
         'fixed z-[80] flex flex-col pointer-events-none',
         'transition-[opacity,transform] duration-200 ease-out',
-        side === 'left' ? 'left-0' : 'right-0',
+        side === 'left' ? 'left-1.5' : 'right-1.5',
         isOpen
           ? 'opacity-100 translate-x-0'
           : cn('opacity-0', slideHidden),
@@ -88,7 +94,7 @@ export function CurrencyRail({
       style={{
         top: 'max(14px, env(safe-area-inset-top))',
         bottom: 'max(14px, env(safe-area-inset-bottom))',
-        width: '56px',
+        width: '112px',
       }}
       data-html2canvas-ignore="true"
       aria-label="浮動幣種切換"
@@ -98,14 +104,13 @@ export function CurrencyRail({
       // React 19 supports `inert` as a boolean prop natively.
       inert={!isOpen}
     >
-      {/* Scrollable currency buttons */}
+      {/* Scrollable currency buttons: two columns keep larger lists compact. */}
       <div
         ref={scrollRef}
         data-rail-scroll="true"
         className={cn(
-          'flex-1 overflow-y-auto flex flex-col items-center gap-[10px] py-2',
+          'flex-1 overflow-y-auto grid grid-cols-2 content-start justify-items-center gap-[10px_6px] py-2 px-1',
           'scrollbar-none',
-          side === 'left' ? 'pl-1.5 pr-1' : 'pr-1.5 pl-1',
           // only accept pointer events while the rail is open
           isOpen ? 'pointer-events-auto' : 'pointer-events-none',
         )}
@@ -162,8 +167,7 @@ export function CurrencyRail({
       {/* Fixed action buttons at the bottom */}
       <div
         className={cn(
-          'flex flex-col items-center gap-[10px] pb-2 pt-1 border-t border-border/40',
-          side === 'left' ? 'pl-1.5 pr-1' : 'pr-1.5 pl-1',
+          'flex flex-col items-center gap-[10px] pb-2 pt-1 border-t border-border/40 px-1',
           isOpen ? 'pointer-events-auto' : 'pointer-events-none',
         )}
       >
@@ -178,6 +182,7 @@ export function CurrencyRail({
             onManagerHover(false);
             onProfitSummaryHover(false);
             onUpstreamSummaryHover(false);
+            onDownstreamSummaryHover(false);
             onClose();
             onOpenUpstreamSummary();
           }}
@@ -185,6 +190,7 @@ export function CurrencyRail({
             onHover(null);
             onManagerHover(false);
             onProfitSummaryHover(false);
+            onDownstreamSummaryHover(false);
             onUpstreamSummaryHover(true);
           }}
           onPointerLeave={() => onUpstreamSummaryHover(false)}
@@ -212,6 +218,53 @@ export function CurrencyRail({
           )}
         </button>
 
+        {/* Downstream summary */}
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onHover(null);
+            onManagerHover(false);
+            onProfitSummaryHover(false);
+            onUpstreamSummaryHover(false);
+            onDownstreamSummaryHover(false);
+            onClose();
+            onOpenDownstreamSummary();
+          }}
+          onPointerEnter={() => {
+            onHover(null);
+            onManagerHover(false);
+            onProfitSummaryHover(false);
+            onUpstreamSummaryHover(false);
+            onDownstreamSummaryHover(true);
+          }}
+          onPointerLeave={() => onDownstreamSummaryHover(false)}
+          className={cn(
+            'relative flex items-center justify-center rounded-full border text-calc-down leading-none shadow-[0_6px_18px_rgba(0,0,0,0.4)]',
+            RAIL_BUTTON_SIZE,
+            downstreamSummaryHover
+              ? 'border-calc-down bg-calc-down/25 text-calc-down shadow-[0_0_18px_rgba(47,209,128,0.38)]'
+              : 'border-calc-down/45 bg-calc-down/10',
+          )}
+          data-downstream-summary-button="true"
+          aria-label="查看下游金額統計"
+          title="下游統計"
+        >
+          <ArrowDownToLine size={16} />
+          {downstreamSummaryHover && (
+            <span
+              className={cn(
+                'pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md border border-calc-down/30 bg-calc-surface px-2 py-1 font-sans text-[10px] text-foreground shadow-xl',
+                tooltipSide,
+              )}
+            >
+              下游統計
+            </span>
+          )}
+        </button>
+
         {/* Profit summary */}
         <button
           type="button"
@@ -222,6 +275,7 @@ export function CurrencyRail({
             onHover(null);
             onManagerHover(false);
             onUpstreamSummaryHover(false);
+            onDownstreamSummaryHover(false);
             onProfitSummaryHover(false);
             onClose();
             onOpenProfitSummary();
@@ -230,6 +284,7 @@ export function CurrencyRail({
             onHover(null);
             onManagerHover(false);
             onUpstreamSummaryHover(false);
+            onDownstreamSummaryHover(false);
             onProfitSummaryHover(true);
           }}
           onPointerLeave={() => onProfitSummaryHover(false)}
@@ -267,6 +322,7 @@ export function CurrencyRail({
             onHover(null);
             onManagerHover(false);
             onUpstreamSummaryHover(false);
+            onDownstreamSummaryHover(false);
             onProfitSummaryHover(false);
             onClose();
             onOpenManager();
@@ -275,6 +331,7 @@ export function CurrencyRail({
             onHover(null);
             onManagerHover(true);
             onUpstreamSummaryHover(false);
+            onDownstreamSummaryHover(false);
             onProfitSummaryHover(false);
           }}
           onPointerLeave={() => onManagerHover(false)}
