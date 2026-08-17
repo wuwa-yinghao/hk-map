@@ -1,4 +1,5 @@
 import { ArrowUpFromLine, Settings, TrendingUp } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { Currency } from '@/hooks/use-currencies';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +44,29 @@ export function CurrencyRail({
   upstreamSummaryHover: boolean;
   onUpstreamSummaryHover: (hovered: boolean) => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // After the rail mounts, scroll the active button into view
+    const frame = requestAnimationFrame(() => {
+      const container = scrollRef.current;
+      if (!container) return;
+      const activeBtn = container.querySelector(
+        `[data-currency-id="${CSS.escape(activeId)}"]`,
+      ) as HTMLElement | null;
+      if (!activeBtn) return;
+      const containerRect = container.getBoundingClientRect();
+      const btnRect = activeBtn.getBoundingClientRect();
+      const isVisible =
+        btnRect.top >= containerRect.top && btnRect.bottom <= containerRect.bottom;
+      if (!isVisible) {
+        activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen, activeId]);
+
   if (!isOpen) return null;
 
   const tooltipSide = side === 'left' ? 'left-[52px]' : 'right-[52px]';
@@ -63,6 +87,7 @@ export function CurrencyRail({
     >
       {/* Scrollable currency buttons */}
       <div
+        ref={scrollRef}
         data-rail-scroll="true"
         className={cn(
           'flex-1 overflow-y-auto flex flex-col items-center gap-[10px] py-2 pointer-events-auto',
