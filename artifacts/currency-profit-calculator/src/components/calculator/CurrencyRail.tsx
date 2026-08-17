@@ -48,8 +48,11 @@ export function CurrencyRail({
 
   useEffect(() => {
     if (!isOpen) return;
-    // After the rail mounts, scroll the active button into view
-    const frame = requestAnimationFrame(() => {
+    // After the rail opens, scroll the active button into view.
+    // Delay by one animation frame + a small offset so the slide-in
+    // animation has already started before we scroll — prevents the
+    // two motions from fighting each other.
+    const timeout = setTimeout(() => {
       const container = scrollRef.current;
       if (!container) return;
       const activeBtn = container.querySelector(
@@ -63,19 +66,24 @@ export function CurrencyRail({
       if (!isVisible) {
         activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
-    });
-    return () => cancelAnimationFrame(frame);
+    }, 80); // wait for the 200 ms slide-in to be well underway
+    return () => clearTimeout(timeout);
   }, [isOpen, activeId]);
 
-  if (!isOpen) return null;
-
   const tooltipSide = side === 'left' ? 'left-[52px]' : 'right-[52px]';
+
+  // Slide direction: left rail slides in from the left, right rail from the right
+  const slideHidden = side === 'left' ? '-translate-x-3' : 'translate-x-3';
 
   return (
     <div
       className={cn(
         'fixed z-[80] flex flex-col pointer-events-none',
+        'transition-[opacity,transform] duration-200 ease-out',
         side === 'left' ? 'left-0' : 'right-0',
+        isOpen
+          ? 'opacity-100 translate-x-0'
+          : cn('opacity-0', slideHidden),
       )}
       style={{
         top: 'max(14px, env(safe-area-inset-top))',
@@ -84,15 +92,22 @@ export function CurrencyRail({
       }}
       data-html2canvas-ignore="true"
       aria-label="浮動幣種切換"
+      aria-hidden={!isOpen}
+      // inert makes the entire subtree non-interactive for both pointer and
+      // keyboard input while the rail is hidden/transitioning out.
+      // React 19 supports `inert` as a boolean prop natively.
+      inert={!isOpen}
     >
       {/* Scrollable currency buttons */}
       <div
         ref={scrollRef}
         data-rail-scroll="true"
         className={cn(
-          'flex-1 overflow-y-auto flex flex-col items-center gap-[10px] py-2 pointer-events-auto',
+          'flex-1 overflow-y-auto flex flex-col items-center gap-[10px] py-2',
           'scrollbar-none',
           side === 'left' ? 'pl-1.5 pr-1' : 'pr-1.5 pl-1',
+          // only accept pointer events while the rail is open
+          isOpen ? 'pointer-events-auto' : 'pointer-events-none',
         )}
         style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
       >
@@ -147,8 +162,9 @@ export function CurrencyRail({
       {/* Fixed action buttons at the bottom */}
       <div
         className={cn(
-          'flex flex-col items-center gap-[10px] pb-2 pt-1 pointer-events-auto border-t border-border/40',
+          'flex flex-col items-center gap-[10px] pb-2 pt-1 border-t border-border/40',
           side === 'left' ? 'pl-1.5 pr-1' : 'pr-1.5 pl-1',
+          isOpen ? 'pointer-events-auto' : 'pointer-events-none',
         )}
       >
         {/* Upstream summary */}
