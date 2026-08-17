@@ -84,6 +84,7 @@ export default function CalculatorPage() {
         mode: modes.size === 1 ? entries[0].mode : 'mixed',
         profit,
         settlementCurrency: SETTLEMENT_CURRENCY,
+        entries,
       }];
     })
   ), [activeId, currencies, formulaHistory]);
