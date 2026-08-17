@@ -15,13 +15,21 @@ import { ProfitSummaryModal, ProfitSummaryItem } from '@/components/calculator/P
 import { UpstreamSummaryModal, UpstreamSummaryItem } from '@/components/calculator/UpstreamSummaryModal';
 import { FormulaHistory } from '@/components/calculator/FormulaHistory';
 import { loadFormulaHistory, useFormulaHistory } from '@/hooks/use-formula-history';
-import { CalcCard, FieldRow, FormattedInput, NumberInput, DiffDisplay } from '@/components/calculator/shared';
+import { CalcCard, CalcResult, FieldRow, FormattedInput, NumberInput, DiffDisplay } from '@/components/calculator/shared';
 
-function AdjustButton({ onClick, children }: { onClick: () => void, children: React.ReactNode }) {
+function AdjustButton({ onClick, children, tone = 'neutral' }: { onClick: () => void, children: React.ReactNode, tone?: 'neg' | 'pos' | 'neutral' }) {
+  const activeClass = tone === 'neg'
+    ? 'active:border-calc-neg active:text-calc-neg active:bg-calc-neg/10'
+    : tone === 'pos'
+    ? 'active:border-calc-pos active:text-calc-pos active:bg-calc-pos/10'
+    : 'active:border-calc-down active:text-calc-down active:bg-calc-down/10';
   return (
-    <button 
+    <button
       onClick={onClick}
-      className="flex-1 py-1.5 px-0.5 rounded-md border border-border bg-calc-surface2 text-foreground font-mono text-[11.5px] font-semibold flex items-center justify-center active:border-calc-down active:text-calc-down"
+      className={cn(
+        "flex-1 py-1.5 px-0.5 rounded-md border border-border bg-calc-surface2 text-muted-foreground font-mono text-[11.5px] font-semibold flex items-center justify-center transition-colors",
+        activeClass,
+      )}
     >
       {children}
     </button>
@@ -401,10 +409,7 @@ export default function CalculatorPage() {
                   <FieldRow label="匯率" variant="source">
                     <NumberInput value={state.srcRate} onChange={(v) => updateField('srcRate', v)} step="0.0001" />
                   </FieldRow>
-                  <div className="mt-2 pt-1.5 border-t border-dashed border-border flex items-baseline justify-between gap-1">
-                    <span className="text-[11px] text-muted-foreground">實時匯率結果</span>
-                    <span className="font-mono text-[15px] font-semibold text-calc-source">{calc.srcResult.toFixed(3)}</span>
-                  </div>
+                  <CalcResult variant="source" label="實時匯率結果" value={calc.srcResult.toFixed(3)} />
                 </CalcCard>
 
                 <div className="bg-calc-surface border border-border rounded-xl p-3 shadow-lg">
@@ -443,10 +448,7 @@ export default function CalculatorPage() {
             <FieldRow label="匯率" variant="up">
               <NumberInput value={state.upRate} onChange={(v) => updateField('upRate', v)} step="0.0001" />
             </FieldRow>
-            <div className="mt-2 pt-1.5 border-t border-dashed border-border flex items-baseline justify-between gap-1">
-              <span className="text-[11px] text-muted-foreground">成本結果</span>
-              <span className="font-mono text-[15px] font-semibold text-calc-up">{calc.upResult.toFixed(3)}</span>
-            </div>
+            <CalcResult variant="up" label="成本結果" value={calc.upResult.toFixed(3)} />
             </CalcCard>
           </CurrencySwitchSection>
 
@@ -473,10 +475,7 @@ export default function CalculatorPage() {
             <FieldRow label="匯率" variant="down">
               <NumberInput value={state.downRate} onChange={(v) => updateField('downRate', v)} step="0.0001" />
             </FieldRow>
-            <div className="mt-2 pt-1.5 border-t border-dashed border-border flex items-baseline justify-between gap-1">
-              <span className="text-[11px] text-muted-foreground">報價結果</span>
-              <span className="font-mono text-[15px] font-semibold text-calc-down">{calc.downResult.toFixed(3)}</span>
-            </div>
+            <CalcResult variant="down" label="報價結果" value={calc.downResult.toFixed(3)} />
             </CalcCard>
           </CurrencySwitchSection>
         </div>
@@ -492,31 +491,73 @@ export default function CalculatorPage() {
           <div className="flex items-center justify-between gap-1.5">
             <span className="text-[11px] text-muted-foreground w-[35px]">點位</span>
             <div className="flex gap-1 flex-1">
-              <AdjustButton onClick={() => adjustDownPoint(-1)}>−1</AdjustButton>
-              <AdjustButton onClick={() => adjustDownPoint(1)}>+1</AdjustButton>
+              <AdjustButton tone="neg" onClick={() => adjustDownPoint(-1)}>−1</AdjustButton>
+              <AdjustButton tone="pos" onClick={() => adjustDownPoint(1)}>+1</AdjustButton>
             </div>
           </div>
           <div className="flex items-center justify-between gap-1.5">
             <span className="text-[11px] text-muted-foreground w-[35px]">匯率</span>
             <div className="flex gap-1 flex-1">
-              <AdjustButton onClick={() => adjustDownRatePct(-1)}>−1%</AdjustButton>
-              <AdjustButton onClick={() => adjustDownRatePct(-0.5)}>−0.5%</AdjustButton>
-              <AdjustButton onClick={() => adjustDownRatePct(0.5)}>+0.5%</AdjustButton>
-              <AdjustButton onClick={() => adjustDownRatePct(1)}>+1%</AdjustButton>
+              <AdjustButton tone="neg" onClick={() => adjustDownRatePct(-1)}>−1%</AdjustButton>
+              <AdjustButton tone="neg" onClick={() => adjustDownRatePct(-0.5)}>−0.5%</AdjustButton>
+              <AdjustButton tone="pos" onClick={() => adjustDownRatePct(0.5)}>+0.5%</AdjustButton>
+              <AdjustButton tone="pos" onClick={() => adjustDownRatePct(1)}>+1%</AdjustButton>
             </div>
           </div>
         </CurrencySwitchSection>
 
+        {/* Mode Toggle — above dashboard so context is clear */}
+        <CurrencySwitchSection className="flex gap-1.5 bg-calc-surface p-[3px] rounded-xl border border-border shrink-0">
+          <button
+            onClick={() => updateField('mode', 'deposit')}
+            className={cn(
+              "flex-1 h-[38px] rounded-[9px] text-[14px] font-bold tracking-wide transition-all duration-200",
+              state.mode === 'deposit'
+                ? "bg-calc-up text-[#0a1628] shadow-[0_0_20px_rgba(76,158,255,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]"
+                : "text-muted-foreground active:text-foreground",
+            )}
+          >
+            入金
+          </button>
+          <button
+            onClick={() => updateField('mode', 'withdraw')}
+            className={cn(
+              "flex-1 h-[38px] rounded-[9px] text-[14px] font-bold tracking-wide transition-all duration-200",
+              state.mode === 'withdraw'
+                ? "bg-calc-down text-[#071a10] shadow-[0_0_20px_rgba(47,209,128,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]"
+                : "text-muted-foreground active:text-foreground",
+            )}
+          >
+            出金
+          </button>
+        </CurrencySwitchSection>
+
         {/* Main Dashboard */}
         <CurrencySwitchSection
-          className="bg-gradient-to-b from-[#1C2130] to-[#12151D] border border-[rgba(76,158,255,0.25)] rounded-xl p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)] shrink-0 mt-1 mb-1"
+          className={cn(
+            "relative rounded-xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)] shrink-0 overflow-hidden border",
+            calc.diffAbsolute > 0
+              ? "bg-gradient-to-b from-[#111d2a] to-[#0d1319] border-[rgba(47,209,128,0.2)]"
+              : calc.diffAbsolute < 0
+              ? "bg-gradient-to-b from-[#1f1214] to-[#0d1319] border-[rgba(255,92,92,0.2)]"
+              : "bg-gradient-to-b from-[#151b28] to-[#0d1319] border-border",
+          )}
         >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[11px] tracking-wider text-muted-foreground font-semibold uppercase flex-1 text-center pl-10">
-              上下游利潤分析 ({state.mode === 'deposit' ? '入金' : '出金'})
+          {/* subtle tinted glow behind the number */}
+          <div className={cn(
+            "pointer-events-none absolute inset-0 opacity-20",
+            calc.diffAbsolute > 0
+              ? "bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,rgba(47,209,128,0.3),transparent)]"
+              : calc.diffAbsolute < 0
+              ? "bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,rgba(255,92,92,0.3),transparent)]"
+              : "",
+          )} />
+          <div className="relative flex items-center justify-between mb-3">
+            <h3 className="text-[11px] tracking-widest text-muted-foreground font-semibold uppercase flex-1 text-center pl-[44px]">
+              利潤分析
             </h3>
             <div
-              className="text-[10px] font-mono bg-calc-surface2 text-muted-foreground px-2 py-0.5 rounded-full shrink-0 border border-border flex items-center justify-center min-w-[36px]"
+              className="text-[10px] font-mono bg-calc-surface2/80 text-muted-foreground px-2.5 py-0.5 rounded-full shrink-0 border border-border"
               aria-live="polite"
             >
               {activeCurrency.name}
@@ -524,27 +565,9 @@ export default function CalculatorPage() {
           </div>
           <DiffDisplay absolute={calc.diffAbsolute} percent={calc.diffPercent} large />
           <Gauge diffAbsolute={calc.diffAbsolute} diffPercent={calc.diffPercent} />
-          <div className="flex justify-between px-1 font-mono text-[9px] text-muted-foreground">
+          <div className="flex justify-between px-1 font-mono text-[9px] text-muted-foreground/60 mt-0.5">
             <span>−50%</span><span>0</span><span>+50%</span>
           </div>
-        </CurrencySwitchSection>
-
-        {/* Mode Toggle */}
-        <CurrencySwitchSection className="flex gap-1.5 bg-calc-surface/60 p-[3px] rounded-lg border border-border shrink-0">
-          <button 
-            onClick={() => updateField('mode', 'deposit')}
-            className={cn("flex-1 h-[34px] rounded-md text-[13.5px] font-bold tracking-wide",
-              state.mode === 'deposit' ? "bg-calc-up text-background shadow-[0_2px_8px_rgba(76,158,255,0.3)]" : "text-muted-foreground")}
-          >
-            入金
-          </button>
-          <button 
-            onClick={() => updateField('mode', 'withdraw')}
-            className={cn("flex-1 h-[34px] rounded-md text-[13.5px] font-bold tracking-wide",
-              state.mode === 'withdraw' ? "bg-calc-down text-background shadow-[0_2px_8px_rgba(47,209,128,0.3)]" : "text-muted-foreground")}
-          >
-            出金
-          </button>
         </CurrencySwitchSection>
 
         {/* Bottom Actions */}
@@ -576,23 +599,23 @@ export default function CalculatorPage() {
         <>
           <button
             type="button"
-            className="fixed left-2 top-1/2 z-[90] flex h-16 w-10 -translate-y-1/2 items-center justify-start touch-none"
+            className="fixed left-0 top-1/2 z-[90] flex h-20 w-8 -translate-y-1/2 items-center justify-start touch-none group"
             onPointerDown={() => openFloatingCurrencies('left')}
             onClick={() => openFloatingCurrencies('left')}
             aria-label="從左側開啟幣種浮球"
             data-html2canvas-ignore="true"
           >
-            <span className="h-12 w-1 rounded-r-md bg-white/10" />
+            <span className="h-14 w-[5px] rounded-r-full bg-white/[0.12] group-active:bg-white/25 transition-colors shadow-[2px_0_8px_rgba(255,255,255,0.05)]" />
           </button>
           <button
             type="button"
-            className="fixed right-2 top-1/2 z-[90] flex h-16 w-10 -translate-y-1/2 items-center justify-end touch-none"
+            className="fixed right-0 top-1/2 z-[90] flex h-20 w-8 -translate-y-1/2 items-center justify-end touch-none group"
             onPointerDown={() => openFloatingCurrencies('right')}
             onClick={() => openFloatingCurrencies('right')}
             aria-label="從右側開啟幣種浮球"
             data-html2canvas-ignore="true"
           >
-            <span className="h-12 w-1 rounded-l-md bg-white/10" />
+            <span className="h-14 w-[5px] rounded-l-full bg-white/[0.12] group-active:bg-white/25 transition-colors shadow-[-2px_0_8px_rgba(255,255,255,0.05)]" />
           </button>
         </>
       )}
