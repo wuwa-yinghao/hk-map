@@ -51,29 +51,13 @@ function EntryRow({ entry }: { entry: FormulaHistoryEntry }) {
   const secondResultColor = isDeposit ? 'text-calc-down/80' : 'text-calc-up/80';
 
   return (
-    <div className="flex flex-col gap-0.5 py-2 border-t border-border/50 first:border-0 first:pt-0">
-      <div className="flex items-center gap-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className={cn(
-            'text-[10px] font-semibold px-1.5 py-0.5 rounded',
-            isDeposit
-              ? 'bg-calc-up/10 text-calc-up'
-              : 'bg-calc-down/10 text-calc-down',
-          )}>
-            {isDeposit ? '入金' : '出金'}
-          </span>
-          <span className="text-[10px] text-muted-foreground font-mono">
-            {formatDateTime(entry.createdAt)}
-          </span>
-        </div>
-      </div>
-
-      {/* 精簡公式：金額 · 上游/下游結果 = 利潤 */}
+    <div className="w-full">
       <div
-        className="rounded-md border border-border/40 bg-calc-surface px-2 py-1 font-mono text-[10px] leading-relaxed text-muted-foreground"
+        className="w-full rounded-md border border-border/40 bg-calc-surface px-2 py-1 font-mono text-[10px] leading-relaxed text-muted-foreground"
         aria-label={`${isDeposit ? '入金' : '出金'} ${formatDateTime(entry.createdAt)}，金額 ${formatInput(entry.amount)}，利潤公式 ${formatAmount(firstResult)} 減 ${formatAmount(secondResult)} 等於 ${formatSigned(profit)}`}
       >
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        <div className="break-words">
+          <span className="text-foreground">[{formatDateTime(entry.createdAt)}]</span>{' '}
           <span className="text-muted-foreground/80">金額</span>
           <span className="text-foreground/80">{formatInput(entry.amount)}</span>
           <span className="text-muted-foreground/60">·</span>
@@ -84,10 +68,6 @@ function EntryRow({ entry }: { entry: FormulaHistoryEntry }) {
           <b className={profitColor}>{formatSigned(profit)}</b>
         </div>
       </div>
-
-      {entry.note ? (
-        <p className="text-[10px] text-muted-foreground truncate pl-0.5">備註：{entry.note}</p>
-      ) : null}
     </div>
   );
 }
@@ -129,9 +109,33 @@ function CurrencySection({ item }: { item: ProfitSummaryItem }) {
           {item.entries.length === 0 ? (
             <p className="py-2 text-[10px] text-muted-foreground">尚無公式記錄</p>
           ) : (
-            item.entries.map((entry) => (
-              <EntryRow key={entry.id} entry={entry} />
-            ))
+            <div className="flex flex-col gap-2 py-2">
+              {(['deposit', 'withdraw'] as const).map((mode) => {
+                const modeEntries = item.entries.filter((entry) => entry.mode === mode);
+                if (modeEntries.length === 0) return null;
+
+                return (
+                  <div key={mode} className="flex flex-col gap-1">
+                    <div className={cn(
+                      'text-[10px] font-semibold',
+                      mode === 'deposit' ? 'text-calc-up' : 'text-calc-down',
+                    )}>
+                      {mode === 'deposit' ? '入金' : '出金'}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {modeEntries.map((entry) => (
+                        <EntryRow key={entry.id} entry={entry} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {item.entries.some((entry) => entry.note) && (
+            <p className="truncate pb-1 text-[10px] text-muted-foreground">
+              備註：{item.entries.find((entry) => entry.note)?.note}
+            </p>
           )}
         </div>
       )}

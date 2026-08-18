@@ -167,7 +167,7 @@ export function CurrencyRail({
       {/* Fixed action buttons at the bottom */}
       <div
         className={cn(
-          'flex flex-col items-center gap-[10px] pb-2 pt-1 border-t border-border/40 px-1',
+          'grid grid-cols-2 justify-items-center gap-[10px_6px] border-t border-border/40 px-1 pb-2 pt-2',
           isOpen ? 'pointer-events-auto' : 'pointer-events-none',
         )}
       >
