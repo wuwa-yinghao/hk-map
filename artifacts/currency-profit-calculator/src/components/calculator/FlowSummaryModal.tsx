@@ -216,9 +216,15 @@ export function FlowSummaryModal({
                                     aria-label={`${item.name}${config.formulaLabel}`}
                                   >
                                     <div className="break-words">
-                                      <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
-                                      {formatInput(entry.amount)} × {formatInput(100 - point)}% ÷ {formatInput(rate)} ={' '}
-                                      <b className={config.resultColor}>{formatAmount(result)}</b>
+                                      <div>
+                                        <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
+                                        <span className="text-muted-foreground/80">備註：</span>
+                                        <span className="text-foreground/80">{entry.note || '—'}</span>
+                                      </div>
+                                      <div className="mt-0.5">
+                                        {formatInput(entry.amount)} × {formatInput(100 - point)}% ÷ {formatInput(rate)} ={' '}
+                                        <b className={config.resultColor}>{formatAmount(result)}</b>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -230,11 +236,6 @@ export function FlowSummaryModal({
                     </div>
                   )}
 
-                  {item.entries.some((entry) => entry.note) && (
-                    <p className="mt-1.5 truncate text-[10px] text-muted-foreground">
-                      備註：{item.entries.find((entry) => entry.note)?.note}
-                    </p>
-                  )}
                 </section>
               ))}
             </div>

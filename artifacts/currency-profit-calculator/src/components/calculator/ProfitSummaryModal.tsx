@@ -54,18 +54,23 @@ function EntryRow({ entry }: { entry: FormulaHistoryEntry }) {
     <div className="w-full">
       <div
         className="w-full rounded-md border border-border/40 bg-calc-surface px-2 py-1 font-mono text-[10px] leading-relaxed text-muted-foreground"
-        aria-label={`${isDeposit ? '入金' : '出金'} ${formatDateTime(entry.createdAt)}，金額 ${formatInput(entry.amount)}，利潤公式 ${formatAmount(firstResult)} 減 ${formatAmount(secondResult)} 等於 ${formatSigned(profit)}`}
+        aria-label={`${isDeposit ? '入金' : '出金'} ${formatDateTime(entry.createdAt)}，備註 ${entry.note || '無'}，金額 ${formatInput(entry.amount)}，利潤公式 ${formatAmount(firstResult)} 減 ${formatAmount(secondResult)} 等於 ${formatSigned(profit)}`}
       >
         <div className="break-words">
-          <span className="text-foreground">[{formatDateTime(entry.createdAt)}]</span>{' '}
-          <span className="text-muted-foreground/80">金額</span>
-          <span className="text-foreground/80">{formatInput(entry.amount)}</span>
-          <span className="text-muted-foreground/60">·</span>
-          <span className={firstResultColor}>{formatAmount(firstResult)}</span>
-          <span className="text-muted-foreground/70">−</span>
-          <span className={secondResultColor}>{formatAmount(secondResult)}</span>
-          <span className="text-muted-foreground/70">=</span>
-          <b className={profitColor}>{formatSigned(profit)}</b>
+          <div>
+            <span className="text-foreground">[{formatDateTime(entry.createdAt)}]</span>{' '}
+            <span className="text-muted-foreground/80">備註：</span>
+            <span className="text-foreground/80">{entry.note || '—'}</span>
+          </div>
+          <div className="mt-0.5">
+            <span className="text-foreground/80">{formatInput(entry.amount)}</span>
+            <span className="text-muted-foreground/60"> · </span>
+            <span className={firstResultColor}>{formatAmount(firstResult)}</span>
+            <span className="text-muted-foreground/70"> − </span>
+            <span className={secondResultColor}>{formatAmount(secondResult)}</span>
+            <span className="text-muted-foreground/70"> = </span>
+            <b className={profitColor}>{formatSigned(profit)}</b>
+          </div>
         </div>
       </div>
     </div>
@@ -131,11 +136,6 @@ function CurrencySection({ item }: { item: ProfitSummaryItem }) {
                 );
               })}
             </div>
-          )}
-          {item.entries.some((entry) => entry.note) && (
-            <p className="truncate pb-1 text-[10px] text-muted-foreground">
-              備註：{item.entries.find((entry) => entry.note)?.note}
-            </p>
           )}
         </div>
       )}
