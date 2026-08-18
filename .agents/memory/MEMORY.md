@@ -1,3 +1,4 @@
 - [Currency calculator UX](currency-calculator-ux.md) — preserve the original mobile calculator flow while keeping each currency's inputs isolated in browser storage.
+- [Flow summary specification](flow-summary-spec.md) — upstream and downstream summaries share one modal layout and differ only by direction semantics.
 - [GitHub integration caveat](github-vcs-integration.md) — an added GitHub connection may still withhold credentials from direct Git pushes; verify the remote before claiming sync.
 - [Vercel team permissions](vercel-team-permissions.md) — a valid personal token can still lack visibility and project-creation rights in the target team.
