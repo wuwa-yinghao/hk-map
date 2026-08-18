@@ -187,32 +187,42 @@ export function FlowSummaryModal({
                   {item.entries.length === 0 ? (
                     <p className="py-1 text-[10px] text-muted-foreground">{config.emptyEntryLabel}</p>
                   ) : (
-                    <div className="flex flex-col gap-1.5">
-                      {item.entries.map((entry) => {
-                        const result = getResult(entry);
-                        const point = Number(entry[pointKey]) || 0;
-                        const rate = Number(entry[rateKey]) || 1;
+                    <div className="flex flex-col gap-2">
+                      {(['deposit', 'withdraw'] as const).map((mode) => {
+                        const modeEntries = item.entries.filter((entry) => entry.mode === mode);
+                        if (modeEntries.length === 0) return null;
 
                         return (
-                          <div key={entry.id} className="flex items-center gap-2">
-                            <span className={cn(
-                              'w-[32px] shrink-0 text-[10px] font-semibold',
-                              entry.mode === 'deposit' ? 'text-calc-up' : 'text-calc-down',
+                          <div key={mode} className="flex flex-col gap-1">
+                            <div className={cn(
+                              'text-[10px] font-semibold',
+                              mode === 'deposit' ? 'text-calc-up' : 'text-calc-down',
                             )}>
-                              {entry.mode === 'deposit' ? '入金' : '出金'}
-                            </span>
-                            <div
-                              className={cn(
-                                'min-w-0 flex-1 overflow-x-auto rounded-md border bg-calc-surface px-2 py-1 font-mono text-[10.5px] leading-relaxed text-muted-foreground',
-                                config.formulaBorderColor,
-                              )}
-                              aria-label={`${item.name}${config.formulaLabel}`}
-                            >
-                              <div className="whitespace-nowrap">
-                                <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
-                                {formatInput(entry.amount)} × {formatInput(100 - point)}% ÷ {formatInput(rate)} ={' '}
-                                <b className={config.resultColor}>{formatAmount(result)}</b>
-                              </div>
+                              {mode === 'deposit' ? '入金' : '出金'}
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              {modeEntries.map((entry) => {
+                                const result = getResult(entry);
+                                const point = Number(entry[pointKey]) || 0;
+                                const rate = Number(entry[rateKey]) || 1;
+
+                                return (
+                                  <div
+                                    key={entry.id}
+                                    className={cn(
+                                      'w-full rounded-md border bg-calc-surface px-2 py-1 font-mono text-[10.5px] leading-relaxed text-muted-foreground',
+                                      config.formulaBorderColor,
+                                    )}
+                                    aria-label={`${item.name}${config.formulaLabel}`}
+                                  >
+                                    <div className="break-words">
+                                      <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
+                                      {formatInput(entry.amount)} × {formatInput(100 - point)}% ÷ {formatInput(rate)} ={' '}
+                                      <b className={config.resultColor}>{formatAmount(result)}</b>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         );
