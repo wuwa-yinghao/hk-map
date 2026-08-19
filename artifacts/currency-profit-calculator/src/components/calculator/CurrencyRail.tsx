@@ -145,8 +145,17 @@ export function CurrencyRail({
               )}
               data-currency-id={currency.id}
               aria-label={`切換至${currency.name}`}
+              title={currency.name}
             >
-              <span className="max-w-[40px] truncate font-sans text-[10px] font-semibold leading-tight">
+              <span
+                className="max-w-[40px] overflow-hidden break-words text-center font-sans text-[9px] font-semibold leading-[11px]"
+                style={{
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 2,
+                  maxHeight: '22px',
+                }}
+              >
                 {currency.name}
               </span>
               {isHovered && (
