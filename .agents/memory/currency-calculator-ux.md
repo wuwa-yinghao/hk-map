@@ -9,8 +9,14 @@ The calculator is a personal, mobile-first utility. Currency switching must chan
 
 **How to apply:** Keep currency management and calculator persistence client-side unless the user explicitly asks for accounts, sharing, or server-backed data. Keep the rail focused on switching and one settings entry point rather than putting destructive controls beside currency buttons.
 
-Each formula uses independent upstream and downstream input amounts, while its outcomes and profit totals are always shown in USDT. Older saved entries that only have one shared amount must initialize both amounts from that value.
+Each formula uses one shared transaction amount plus separate fixed upstream and downstream fees in USDT. Each fee is added to its corresponding result before profit totals are calculated.
 
-**Why:** Independent transactions require each side to retain the exact amount it used; silently treating old records as one-sided values would change previously saved calculations.
+**Why:** Upstream and downstream costs may have different per-transaction fees, while the underlying transaction amount is the same. Applying either fee to both sides would distort profits.
 
-**How to apply:** Any future history import, export, or summary view must preserve and show both input amounts, using the legacy shared amount only as a compatibility fallback.
+**How to apply:** Any future history import, export, or summary view must preserve the shared amount and both fees, show the addition in its formula, and default missing fees in older records to zero.
+
+Upstream and downstream fee inputs are low-frequency controls and start collapsed. Their compact rows must still indicate whether a fee is unset or show the active USDT amount.
+
+**Why:** Most calculations do not need fee changes, so always-visible fee inputs add noise and vertical height to the mobile-first screen.
+
+**How to apply:** Keep the two disclosures independent; opening one must not hide or change the other fee, and collapsing a section must never remove its fee from the calculation.

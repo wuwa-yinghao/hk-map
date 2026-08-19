@@ -49,6 +49,48 @@ function CurrencySwitchSection({
   );
 }
 
+function FeeDisclosure({
+  variant,
+  fee,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  variant: 'up' | 'down';
+  fee: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  const feeColor = variant === 'up' ? 'text-calc-up' : 'text-calc-down';
+  const feeValue = Number(fee) ? `${fee} USDT` : '未設定';
+
+  return (
+    <div className="mt-1 overflow-hidden rounded-md border border-border/70 bg-calc-surface2/60">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left"
+        aria-expanded={isOpen}
+      >
+        <span className="text-[10.5px] font-medium text-muted-foreground">單筆手續費</span>
+        <span className={cn("ml-auto font-mono text-[10px]", feeColor)}>{feeValue}</span>
+        <ChevronDown
+          size={13}
+          className={cn("text-muted-foreground transition-transform", isOpen && "rotate-180")}
+        />
+      </button>
+      {isOpen && (
+        <div className="border-t border-border/60 px-2 pb-1.5 pt-1">
+          <FieldRow label="費用" variant={variant}>
+            {children}
+          </FieldRow>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CalculatorPage() {
   const { currencies, activeId, setActiveId, addCurrency, removeCurrency, updateCurrency, moveCurrency } = useCurrencies();
   const activeCurrency = currencies.find(c => c.id === activeId) || currencies[0];
@@ -158,6 +200,8 @@ export default function CalculatorPage() {
   const [isUpstreamSummaryOpen, setIsUpstreamSummaryOpen] = useState(false);
   const [isDownstreamSummaryOpen, setIsDownstreamSummaryOpen] = useState(false);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+  const [isUpFeeOpen, setIsUpFeeOpen] = useState(false);
+  const [isDownFeeOpen, setIsDownFeeOpen] = useState(false);
   const [formulaNote, setFormulaNote] = useState('');
   const isRailOpenRef = useRef(false);
   const railDismissTimerRef = useRef<number | null>(null);
@@ -437,8 +481,8 @@ export default function CalculatorPage() {
           {isAccordionOpen && (
               <div className="px-2.5 pb-2.5 flex flex-col gap-2">
                 <CalcCard variant="source" title="實時匯率">
-                  <FieldRow label="單筆金額" variant="source">
-                    <FormattedInput value={state.upAmount} onChange={(v) => updateField('upAmount', v)} />
+                  <FieldRow label="金額" variant="source">
+                    <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} />
                   </FieldRow>
                   <FieldRow label="匯率" variant="source">
                     <NumberInput value={state.srcRate} onChange={(v) => updateField('srcRate', v)} step="0.0001" />
@@ -462,8 +506,8 @@ export default function CalculatorPage() {
         <div className="flex flex-col gap-2">
           <CurrencySwitchSection>
             <CalcCard variant="up" title="上游 (成本)">
-            <FieldRow label="單筆金額" variant="up">
-              <FormattedInput value={state.upAmount} onChange={(v) => updateField('upAmount', v)} onFocusSelect />
+            <FieldRow label="金額" variant="up">
+              <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
             </FieldRow>
             <FieldRow label="點位" variant="up">
               <NumberInput 
@@ -482,6 +526,14 @@ export default function CalculatorPage() {
             <FieldRow label="匯率" variant="up">
               <NumberInput value={state.upRate} onChange={(v) => updateField('upRate', v)} step="0.0001" />
             </FieldRow>
+            <FeeDisclosure
+              variant="up"
+              fee={state.upFee}
+              isOpen={isUpFeeOpen}
+              onToggle={() => setIsUpFeeOpen((open) => !open)}
+            >
+              <FormattedInput value={state.upFee} onChange={(v) => updateField('upFee', v)} onFocusSelect suffix="USDT" />
+            </FeeDisclosure>
             <CalcResult variant="up" label="成本結果（USDT）" value={calc.upResult.toFixed(3)} />
             </CalcCard>
           </CurrencySwitchSection>
@@ -489,8 +541,8 @@ export default function CalculatorPage() {
           {/* Downstream Card */}
           <CurrencySwitchSection>
             <CalcCard variant="down" title="下游 (報價)">
-            <FieldRow label="單筆金額" variant="down">
-              <FormattedInput value={state.downAmount} onChange={(v) => updateField('downAmount', v)} onFocusSelect />
+            <FieldRow label="金額" variant="down">
+              <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
             </FieldRow>
             <FieldRow label="點位" variant="down">
               <NumberInput 
@@ -509,6 +561,14 @@ export default function CalculatorPage() {
             <FieldRow label="匯率" variant="down">
               <NumberInput value={state.downRate} onChange={(v) => updateField('downRate', v)} step="0.0001" />
             </FieldRow>
+            <FeeDisclosure
+              variant="down"
+              fee={state.downFee}
+              isOpen={isDownFeeOpen}
+              onToggle={() => setIsDownFeeOpen((open) => !open)}
+            >
+              <FormattedInput value={state.downFee} onChange={(v) => updateField('downFee', v)} onFocusSelect suffix="USDT" />
+            </FeeDisclosure>
             <CalcResult variant="down" label="報價結果（USDT）" value={calc.downResult.toFixed(3)} />
             </CalcCard>
           </CurrencySwitchSection>

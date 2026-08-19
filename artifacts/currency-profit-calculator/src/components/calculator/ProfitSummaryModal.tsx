@@ -52,7 +52,7 @@ function EntryRow({ entry }: { entry: FormulaHistoryEntry }) {
     <div className="w-full">
       <div
         className="w-full rounded-md border border-border/40 bg-calc-surface px-2 py-1 font-mono text-[10px] leading-relaxed text-muted-foreground"
-        aria-label={`${isDeposit ? '入金' : '出金'} ${formatDateTime(entry.createdAt)}，備註 ${entry.note || '無'}，上游單筆金額 ${formatInput(entry.upAmount)}，下游單筆金額 ${formatInput(entry.downAmount)}，利潤公式 ${formatAmount(firstResult)} 減 ${formatAmount(secondResult)} 等於 ${formatSigned(profit)} USDT`}
+        aria-label={`${isDeposit ? '入金' : '出金'} ${formatDateTime(entry.createdAt)}，備註 ${entry.note || '無'}，金額 ${formatInput(entry.amount)}，上游手續費 ${formatInput(entry.upFee)} USDT，下游手續費 ${formatInput(entry.downFee)} USDT，利潤公式 ${formatAmount(firstResult)} 減 ${formatAmount(secondResult)} 等於 ${formatSigned(profit)} USDT`}
       >
         <div className="break-words">
           <div>
@@ -61,13 +61,11 @@ function EntryRow({ entry }: { entry: FormulaHistoryEntry }) {
             <span className="text-foreground/80">{entry.note || '—'}</span>
           </div>
           <div className="mt-0.5">
-            <span className="text-calc-up/80">上 {formatInput(entry.upAmount)}</span>
-            <span className="text-muted-foreground/60"> → </span>
-            <span className="text-calc-up/80">{formatAmount(up)} USDT</span>
-            <span className="text-muted-foreground/70"> · </span>
-            <span className="text-calc-down/80">下 {formatInput(entry.downAmount)}</span>
-            <span className="text-muted-foreground/60"> → </span>
-            <span className="text-calc-down/80">{formatAmount(down)} USDT</span>
+            <span className="text-foreground/80">金額 {formatInput(entry.amount)}</span>
+            <span className="text-muted-foreground/60"> · </span>
+            <span className="text-calc-up/80">上游費 {formatInput(entry.upFee)} USDT → {formatAmount(up)} USDT</span>
+            <span className="text-muted-foreground/60"> · </span>
+            <span className="text-calc-down/80">下游費 {formatInput(entry.downFee)} USDT → {formatAmount(down)} USDT</span>
             <span className="text-muted-foreground/70"> · {isDeposit ? '上−下' : '下−上'} = </span>
             <b className={profitColor}>{formatSigned(profit)} USDT</b>
           </div>

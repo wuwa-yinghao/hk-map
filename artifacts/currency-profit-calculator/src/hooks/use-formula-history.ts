@@ -14,7 +14,14 @@ const historyKey = (currencyId: string) => `calc_formula_history_${currencyId}`;
 const normalizeFormulaHistoryEntry = (value: unknown): FormulaHistoryEntry | null => {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<FormulaHistoryEntry>;
+  const legacyCandidate = candidate as Partial<FormulaHistoryEntry> & {
+    upAmount?: unknown;
+    downAmount?: unknown;
+  };
   const state = normalizeCalcState(candidate);
+  const usesDeprecatedIndependentAmounts =
+    typeof legacyCandidate.upAmount === 'string' ||
+    typeof legacyCandidate.downAmount === 'string';
   if (
     !state ||
     typeof candidate.id !== 'string' ||
@@ -29,8 +36,12 @@ const normalizeFormulaHistoryEntry = (value: unknown): FormulaHistoryEntry | nul
     id: candidate.id,
     note: candidate.note,
     createdAt: candidate.createdAt,
-    ...(typeof candidate.upResult === 'number' ? { upResult: candidate.upResult } : {}),
-    ...(typeof candidate.downResult === 'number' ? { downResult: candidate.downResult } : {}),
+    ...(typeof candidate.upResult === 'number' && !usesDeprecatedIndependentAmounts
+      ? { upResult: candidate.upResult }
+      : {}),
+    ...(typeof candidate.downResult === 'number' && !usesDeprecatedIndependentAmounts
+      ? { downResult: candidate.downResult }
+      : {}),
   };
 };
 

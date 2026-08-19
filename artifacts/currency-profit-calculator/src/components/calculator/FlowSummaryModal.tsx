@@ -97,7 +97,7 @@ export function FlowSummaryModal({
   const config = directionConfig[direction];
   const Icon = config.icon;
   const resultKey = direction === 'upstream' ? 'upResult' : 'downResult';
-  const amountKey = direction === 'upstream' ? 'upAmount' : 'downAmount';
+  const feeKey = direction === 'upstream' ? 'upFee' : 'downFee';
   const pointKey = direction === 'upstream' ? 'upPoint' : 'downPoint';
   const rateKey = direction === 'upstream' ? 'upRate' : 'downRate';
   const dialogTitle = `${config.title}`;
@@ -223,7 +223,7 @@ export function FlowSummaryModal({
                                         <span className="text-foreground/80">{entry.note || '—'}</span>
                                       </div>
                                       <div className="mt-0.5">
-                                        {formatInput(entry[amountKey])} × {formatInput(100 - point)}% ÷ {formatInput(rate)} ={' '}
+                                        {formatInput(entry.amount)} × {formatInput(100 - point)}% ÷ {formatInput(rate)} + {formatInput(entry[feeKey])} USDT ={' '}
                                         <b className={config.resultColor}>{formatAmount(result)} USDT</b>
                                       </div>
                                     </div>

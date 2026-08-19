@@ -7,11 +7,12 @@ const formatNumber = (value: string | number) => {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(number);
 };
 
-const calculateLeg = (amount: string, point: string, rate: string) => {
+const calculateLeg = (amount: string, point: string, rate: string, fee: string) => {
   const amountNumber = Number(amount) || 0;
   const pointNumber = Number(point) || 0;
   const rateNumber = Number(rate) || 1;
-  return (amountNumber * ((100 - pointNumber) / 100)) / rateNumber;
+  const feeNumber = Number(fee) || 0;
+  return (amountNumber * ((100 - pointNumber) / 100)) / rateNumber + feeNumber;
 };
 
 export function FormulaHistory({
@@ -98,18 +99,18 @@ export function FormulaHistory({
                 {([
                   {
                     label: '上游',
-                    amount: entry.upAmount,
+                    fee: entry.upFee,
                     point: entry.upPoint,
                     rate: entry.upRate,
-                    result: entry.upResult ?? calculateLeg(entry.upAmount, entry.upPoint, entry.upRate),
+                    result: entry.upResult ?? calculateLeg(entry.amount, entry.upPoint, entry.upRate, entry.upFee),
                     tone: 'text-calc-up',
                   },
                   {
                     label: '下游',
-                    amount: entry.downAmount,
+                    fee: entry.downFee,
                     point: entry.downPoint,
                     rate: entry.downRate,
-                    result: entry.downResult ?? calculateLeg(entry.downAmount, entry.downPoint, entry.downRate),
+                    result: entry.downResult ?? calculateLeg(entry.amount, entry.downPoint, entry.downRate, entry.downFee),
                     tone: 'text-calc-down',
                   },
                 ] as const).map((leg) => (
@@ -117,7 +118,7 @@ export function FormulaHistory({
                     <p className={`mb-0.5 text-[11px] font-semibold ${leg.tone}`}>{leg.label}</p>
                     <p className="break-words text-muted-foreground">
                       <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
-                      <span>{formatNumber(leg.amount)} × {formatNumber(100 - (Number(leg.point) || 0))}% ÷ {formatNumber(leg.rate)} = </span>
+                      <span>{formatNumber(entry.amount)} × {formatNumber(100 - (Number(leg.point) || 0))}% ÷ {formatNumber(leg.rate)} + {formatNumber(leg.fee)} USDT = </span>
                       <b className={leg.tone}>{formatNumber(leg.result)} USDT</b>
                     </p>
                   </div>
