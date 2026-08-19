@@ -7,6 +7,12 @@ const formatNumber = (value: string | number) => {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(number);
 };
 
+const formatFeeSuffix = (value: string | number) => {
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(number) || number === 0) return '';
+  return ` ${number > 0 ? '+' : ''}${formatNumber(number)}`;
+};
+
 const calculateLeg = (amount: string, point: string, rate: string, fee: string) => {
   const amountNumber = Number(amount) || 0;
   const pointNumber = Number(point) || 0;
@@ -118,7 +124,7 @@ export function FormulaHistory({
                     <p className={`mb-0.5 text-[11px] font-semibold ${leg.tone}`}>{leg.label}</p>
                     <p className="break-words text-muted-foreground">
                       <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
-                      <span>{formatNumber(entry.amount)} × {formatNumber(100 - (Number(leg.point) || 0))}% ÷ {formatNumber(leg.rate)} + {formatNumber(leg.fee)} USDT = </span>
+                      <span>{formatNumber(entry.amount)} × {formatNumber(100 - (Number(leg.point) || 0))}% ÷ {formatNumber(leg.rate)}{formatFeeSuffix(leg.fee)} = </span>
                       <b className={leg.tone}>{formatNumber(leg.result)} USDT</b>
                     </p>
                   </div>

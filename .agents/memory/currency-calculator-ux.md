@@ -20,3 +20,9 @@ Upstream and downstream fee inputs are low-frequency controls and start collapse
 **Why:** Most calculations do not need fee changes, so always-visible fee inputs add noise and vertical height to the mobile-first screen.
 
 **How to apply:** Keep the two disclosures independent; opening one must not hide or change the other fee, and collapsing a section must never remove its fee from the calculation.
+
+Summary and history formulas omit zero fees entirely. A nonzero fee appears inline as a signed plain number such as `+2.3`; the result, not the fee addition, carries the USDT unit.
+
+**Why:** Zero-fee labels add visual noise to multi-currency records, while the compact notation keeps nonzero adjustments legible.
+
+**How to apply:** Apply this format consistently in profit, upstream, downstream, and formula-history details, including accessible labels where those details are read aloud.

@@ -75,6 +75,12 @@ function formatInput(value: string | number) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(number);
 }
 
+function formatFeeSuffix(value: string | number) {
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(number) || number === 0) return '';
+  return ` ${number > 0 ? '+' : ''}${formatInput(number)}`;
+}
+
 function formatTime(value: string) {
   return new Intl.DateTimeFormat('zh-TW', {
     month: '2-digit',
@@ -223,7 +229,7 @@ export function FlowSummaryModal({
                                         <span className="text-foreground/80">{entry.note || '—'}</span>
                                       </div>
                                       <div className="mt-0.5">
-                                        {formatInput(entry.amount)} × {formatInput(100 - point)}% ÷ {formatInput(rate)} + {formatInput(entry[feeKey])} USDT ={' '}
+                                        {formatInput(entry.amount)} × {formatInput(100 - point)}% ÷ {formatInput(rate)}{formatFeeSuffix(entry[feeKey])} ={' '}
                                         <b className={config.resultColor}>{formatAmount(result)} USDT</b>
                                       </div>
                                     </div>
