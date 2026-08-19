@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export type CalcState = {
   mode: 'deposit' | 'withdraw';
+  /** 舊版共用金額，僅用於遷移既有本機資料。 */
   amount: string;
+  upAmount: string;
+  downAmount: string;
   srcRate: string;
   upPoint: string;
   upRate: string;
@@ -15,6 +18,8 @@ export const SETTLEMENT_CURRENCY = 'USDT' as const;
 export const DEFAULT_CALC_STATE: CalcState = {
   mode: 'deposit',
   amount: '200000',
+  upAmount: '200000',
+  downAmount: '200000',
   srcRate: '1',
   upPoint: '12',
   upRate: '1',
@@ -22,11 +27,38 @@ export const DEFAULT_CALC_STATE: CalcState = {
   downRate: '0.995',
 };
 
+export function normalizeCalcState(value: unknown): CalcState | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<CalcState>;
+  if (
+    (candidate.mode !== 'deposit' && candidate.mode !== 'withdraw') ||
+    typeof candidate.amount !== 'string' ||
+    typeof candidate.srcRate !== 'string' ||
+    typeof candidate.upPoint !== 'string' ||
+    typeof candidate.upRate !== 'string' ||
+    typeof candidate.downPoint !== 'string' ||
+    typeof candidate.downRate !== 'string'
+  ) {
+    return null;
+  }
+
+  // Older localStorage snapshots had one shared amount. Use it for both legs
+  // when migrating so existing formulas keep the same result.
+  return {
+    ...candidate,
+    upAmount: typeof candidate.upAmount === 'string' ? candidate.upAmount : candidate.amount,
+    downAmount: typeof candidate.downAmount === 'string' ? candidate.downAmount : candidate.amount,
+  } as CalcState;
+}
+
 export function useCalculatorState(currencyId: string) {
   const [state, setState] = useState<CalcState>(() => {
     try {
       const saved = localStorage.getItem(`calc_state_${currencyId}`);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const normalized = normalizeCalcState(JSON.parse(saved));
+        if (normalized) return normalized;
+      }
     } catch {}
     return DEFAULT_CALC_STATE;
   });
@@ -35,7 +67,8 @@ export function useCalculatorState(currencyId: string) {
     try {
       const saved = localStorage.getItem(`calc_state_${currencyId}`);
       if (saved) {
-        setState(JSON.parse(saved));
+        const normalized = normalizeCalcState(JSON.parse(saved));
+        setState(normalized ?? DEFAULT_CALC_STATE);
       } else {
         setState(DEFAULT_CALC_STATE);
       }
@@ -58,7 +91,8 @@ export function useCalculatorState(currencyId: string) {
 }
 
 export function calculateProfit(state: CalcState) {
-  const amountNum = parseFloat(state.amount) || 0;
+  const upAmountNum = parseFloat(state.upAmount ?? state.amount) || 0;
+  const downAmountNum = parseFloat(state.downAmount ?? state.amount) || 0;
   const upPointNum = parseFloat(state.upPoint) || 0;
   const upRateNum = parseFloat(state.upRate) || 1;
   const downPointNum = parseFloat(state.downPoint) || 0;
@@ -69,8 +103,8 @@ export function calculateProfit(state: CalcState) {
     return (amount * pt) / rate;
   };
 
-  const upResult = calcLeg(amountNum, upPointNum, upRateNum);
-  const downResult = calcLeg(amountNum, downPointNum, downRateNum);
+  const upResult = calcLeg(upAmountNum, upPointNum, upRateNum);
+  const downResult = calcLeg(downAmountNum, downPointNum, downRateNum);
   const diffAbsolute = state.mode === 'deposit'
     ? upResult - downResult
     : downResult - upResult;
@@ -90,37 +124,30 @@ export function calculateProfit(state: CalcState) {
 }
 
 export function isCalcState(value: unknown): value is CalcState {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Partial<CalcState>;
-  return (
-    (candidate.mode === 'deposit' || candidate.mode === 'withdraw') &&
-    typeof candidate.amount === 'string' &&
-    typeof candidate.srcRate === 'string' &&
-    typeof candidate.upPoint === 'string' &&
-    typeof candidate.upRate === 'string' &&
-    typeof candidate.downPoint === 'string' &&
-    typeof candidate.downRate === 'string'
-  );
+  const normalized = normalizeCalcState(value);
+  return Boolean(normalized);
 }
 
 export function useCalculations(state: CalcState) {
   return useMemo(() => {
-    const amountNum = parseFloat(state.amount) || 0;
+    const upAmountNum = parseFloat(state.upAmount ?? state.amount) || 0;
+    const downAmountNum = parseFloat(state.downAmount ?? state.amount) || 0;
+    const sourceAmountNum = upAmountNum;
     const srcRateNum = parseFloat(state.srcRate) || 1;
     const upPointNum = parseFloat(state.upPoint) || 0;
     const upRateNum = parseFloat(state.upRate) || 1;
     const downPointNum = parseFloat(state.downPoint) || 0;
     const downRateNum = parseFloat(state.downRate) || 1;
 
-    const srcResult = amountNum / srcRateNum;
+    const srcResult = sourceAmountNum / srcRateNum;
     
     const calcLeg = (amt: number, point: number, rate: number) => {
       const pt = (100 - point) / 100;
       return (amt * pt) / rate;
     };
 
-    const upResult = calcLeg(amountNum, upPointNum, upRateNum);
-    const downResult = calcLeg(amountNum, downPointNum, downRateNum);
+    const upResult = calcLeg(upAmountNum, upPointNum, upRateNum);
+    const downResult = calcLeg(downAmountNum, downPointNum, downRateNum);
 
     const diffAbsolute = state.mode === 'deposit' ? (upResult - downResult) : (downResult - upResult);
     const base = state.mode === 'deposit' ? upResult : downResult;

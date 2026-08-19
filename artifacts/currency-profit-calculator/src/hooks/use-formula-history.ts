@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalcState } from '@/hooks/use-calculator-state';
+import { CalcState, normalizeCalcState } from '@/hooks/use-calculator-state';
 
 export type FormulaHistoryEntry = CalcState & {
   id: string;
@@ -11,21 +11,27 @@ export type FormulaHistoryEntry = CalcState & {
 
 const historyKey = (currencyId: string) => `calc_formula_history_${currencyId}`;
 
-const isFormulaHistoryEntry = (value: unknown): value is FormulaHistoryEntry => {
-  if (!value || typeof value !== 'object') return false;
+const normalizeFormulaHistoryEntry = (value: unknown): FormulaHistoryEntry | null => {
+  if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<FormulaHistoryEntry>;
-  return (
-    typeof candidate.id === 'string' &&
-    typeof candidate.note === 'string' &&
-    typeof candidate.createdAt === 'string' &&
-    (candidate.mode === 'deposit' || candidate.mode === 'withdraw') &&
-    typeof candidate.amount === 'string' &&
-    typeof candidate.srcRate === 'string' &&
-    typeof candidate.upPoint === 'string' &&
-    typeof candidate.upRate === 'string' &&
-    typeof candidate.downPoint === 'string' &&
-    typeof candidate.downRate === 'string'
-  );
+  const state = normalizeCalcState(candidate);
+  if (
+    !state ||
+    typeof candidate.id !== 'string' ||
+    typeof candidate.note !== 'string' ||
+    typeof candidate.createdAt !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    ...state,
+    id: candidate.id,
+    note: candidate.note,
+    createdAt: candidate.createdAt,
+    ...(typeof candidate.upResult === 'number' ? { upResult: candidate.upResult } : {}),
+    ...(typeof candidate.downResult === 'number' ? { downResult: candidate.downResult } : {}),
+  };
 };
 
 export const loadFormulaHistory = (currencyId: string): FormulaHistoryEntry[] => {
@@ -33,7 +39,9 @@ export const loadFormulaHistory = (currencyId: string): FormulaHistoryEntry[] =>
     const saved = localStorage.getItem(historyKey(currencyId));
     if (!saved) return [];
     const parsed: unknown = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed.filter(isFormulaHistoryEntry) : [];
+    return Array.isArray(parsed)
+      ? parsed.map(normalizeFormulaHistoryEntry).filter((entry): entry is FormulaHistoryEntry => entry !== null)
+      : [];
   } catch {
     return [];
   }

@@ -437,8 +437,8 @@ export default function CalculatorPage() {
           {isAccordionOpen && (
               <div className="px-2.5 pb-2.5 flex flex-col gap-2">
                 <CalcCard variant="source" title="實時匯率">
-                  <FieldRow label="金額" variant="source">
-                    <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} />
+                  <FieldRow label="單筆金額" variant="source">
+                    <FormattedInput value={state.upAmount} onChange={(v) => updateField('upAmount', v)} />
                   </FieldRow>
                   <FieldRow label="匯率" variant="source">
                     <NumberInput value={state.srcRate} onChange={(v) => updateField('srcRate', v)} step="0.0001" />
@@ -462,8 +462,8 @@ export default function CalculatorPage() {
         <div className="flex flex-col gap-2">
           <CurrencySwitchSection>
             <CalcCard variant="up" title="上游 (成本)">
-            <FieldRow label="金額" variant="up">
-              <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
+            <FieldRow label="單筆金額" variant="up">
+              <FormattedInput value={state.upAmount} onChange={(v) => updateField('upAmount', v)} onFocusSelect />
             </FieldRow>
             <FieldRow label="點位" variant="up">
               <NumberInput 
@@ -482,15 +482,15 @@ export default function CalculatorPage() {
             <FieldRow label="匯率" variant="up">
               <NumberInput value={state.upRate} onChange={(v) => updateField('upRate', v)} step="0.0001" />
             </FieldRow>
-            <CalcResult variant="up" label="成本結果" value={calc.upResult.toFixed(3)} />
+            <CalcResult variant="up" label="成本結果（USDT）" value={calc.upResult.toFixed(3)} />
             </CalcCard>
           </CurrencySwitchSection>
 
           {/* Downstream Card */}
           <CurrencySwitchSection>
             <CalcCard variant="down" title="下游 (報價)">
-            <FieldRow label="金額" variant="down">
-              <FormattedInput value={state.amount} onChange={(v) => updateField('amount', v)} onFocusSelect />
+            <FieldRow label="單筆金額" variant="down">
+              <FormattedInput value={state.downAmount} onChange={(v) => updateField('downAmount', v)} onFocusSelect />
             </FieldRow>
             <FieldRow label="點位" variant="down">
               <NumberInput 
@@ -509,7 +509,7 @@ export default function CalculatorPage() {
             <FieldRow label="匯率" variant="down">
               <NumberInput value={state.downRate} onChange={(v) => updateField('downRate', v)} step="0.0001" />
             </FieldRow>
-            <CalcResult variant="down" label="報價結果" value={calc.downResult.toFixed(3)} />
+            <CalcResult variant="down" label="報價結果（USDT）" value={calc.downResult.toFixed(3)} />
             </CalcCard>
           </CurrencySwitchSection>
         </div>

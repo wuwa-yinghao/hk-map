@@ -98,16 +98,18 @@ export function FormulaHistory({
                 {([
                   {
                     label: '上游',
+                    amount: entry.upAmount,
                     point: entry.upPoint,
                     rate: entry.upRate,
-                    result: entry.upResult ?? calculateLeg(entry.amount, entry.upPoint, entry.upRate),
+                    result: entry.upResult ?? calculateLeg(entry.upAmount, entry.upPoint, entry.upRate),
                     tone: 'text-calc-up',
                   },
                   {
                     label: '下游',
+                    amount: entry.downAmount,
                     point: entry.downPoint,
                     rate: entry.downRate,
-                    result: entry.downResult ?? calculateLeg(entry.amount, entry.downPoint, entry.downRate),
+                    result: entry.downResult ?? calculateLeg(entry.downAmount, entry.downPoint, entry.downRate),
                     tone: 'text-calc-down',
                   },
                 ] as const).map((leg) => (
@@ -115,8 +117,8 @@ export function FormulaHistory({
                     <p className={`mb-0.5 text-[11px] font-semibold ${leg.tone}`}>{leg.label}</p>
                     <p className="break-words text-muted-foreground">
                       <span className="text-foreground">[{formatTime(entry.createdAt)}]</span>{' '}
-                      <span>{formatNumber(entry.amount)} × {formatNumber(100 - (Number(leg.point) || 0))}% ÷ {formatNumber(leg.rate)} = </span>
-                      <b className={leg.tone}>{formatNumber(leg.result)}</b>
+                      <span>{formatNumber(leg.amount)} × {formatNumber(100 - (Number(leg.point) || 0))}% ÷ {formatNumber(leg.rate)} = </span>
+                      <b className={leg.tone}>{formatNumber(leg.result)} USDT</b>
                     </p>
                   </div>
                 ))}

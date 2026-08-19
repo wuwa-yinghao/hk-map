@@ -63,7 +63,7 @@ export function CalcResult({ variant, label, value }: { variant: CardVariant, la
 export function FieldRow({ label, variant, children }: { label: string, variant: CardVariant, children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-1.5 mb-1.5 last:mb-0">
-      <label className="w-[30px] shrink-0 text-[11px] text-muted-foreground font-medium">{label}</label>
+      <label className="w-[48px] shrink-0 whitespace-nowrap text-[11px] text-muted-foreground font-medium">{label}</label>
       <div className={cn(
         "flex-1 min-w-0 flex items-center bg-calc-surface2 border border-border rounded-md px-2 transition-colors focus-within:bg-[#20242F]",
         variantFocusClasses[variant],
